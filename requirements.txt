@@ -1,0 +1,4 @@
+streamlit
+requests
+beautifulsoup4
+Add beautifulsoup4 to support bs4 import
