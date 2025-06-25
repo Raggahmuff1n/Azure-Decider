@@ -113,7 +113,6 @@ def get_service_docs_and_pricing():
             "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/",
             "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/"
         }
-        # Add more as needed
     }
 
 FEATURE_KEYWORDS = {
@@ -229,41 +228,50 @@ RICH_DETAILS = {
     }
 }
 
-
 def extract_features_from_input(use_case, capabilities):
     features = set()
     for cap, sel in capabilities.items():
         if sel:
             features.add(cap.lower())
-    # Expand: scan for lots of possible Azure scenario keywords
     key_phrases = [
         "ai/ml", "ai", "ml", "machine learning", "analytics", "bi", "dashboard", "etl", "pipeline", 
         "data warehouse", "integration", "storage", "serverless", "devops", "web app", "container", 
         "monitoring", "hybrid", "database", "cosmos", "kubernetes", "app service", "functions", "logic app",
-        "iot", "event", "event grid", "event hub", "stream", "batch", "data ingestion", "messaging", "workflow"
+        "iot", "event", "event grid", "event hub", "stream", "batch", "data ingestion", "messaging", "workflow", 
+        "anomaly", "real-time"
     ]
     use_case_lower = use_case.lower()
     for phrase in key_phrases:
         if phrase in use_case_lower:
             features.add(phrase)
+    # Add all individual words as features too
+    for word in use_case_lower.split():
+        features.add(word.strip(".,"))
     return features
 
 def product_matches(service, features, compliance):
     name = service["name"].lower()
     category = service.get("category", "").lower()
-    matched = False
-    for label, keywords in FEATURE_KEYWORDS.items():
-        for kw in keywords:
-            if kw in name or kw in category:
-                if label in features or any(kw in f for f in features):
-                    matched = True
+
+    # Match on any feature or keyword in name/category
+    for feature in features:
+        # Check all keywords in FEATURE_KEYWORDS
+        for kw_list in FEATURE_KEYWORDS.values():
+            for kw in kw_list:
+                if kw in name or kw in category or kw == feature:
+                    return True
+        # Direct match
+        if feature in name or feature in category:
+            return True
+
+    # Compliance logic as before
     if compliance:
         for c_key, svcs in COMPLIANCE_KEYWORDS.items():
             if c_key in compliance.lower():
                 for kw in svcs:
                     if kw in name:
-                        matched = True
-    return matched
+                        return True
+    return False
 
 def recommend_architecture(inputs, services):
     service_info = get_service_docs_and_pricing()
