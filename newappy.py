@@ -134,16 +134,18 @@ def product_score(service, features, compliance):
     score = 0
     name = service["name"].lower()
     category = service.get("category", "").lower()
+    # Heavily weight full phrase matches
     for feature in features:
         if feature in name or feature in category:
             score += 2
         if any(feature in kw for kw in [name, category]):
             score += 1
+    # Compliance bump
     if compliance and compliance.lower() in name:
         score += 2
     return score
 
-def recommend_architecture(inputs, services):
+def recommend_architecture(inputs, services, min_score=3, top_n=10):
     use_case = f"{inputs['use_case']} {inputs['non_func']} {inputs['compliance']}".lower()
     compliance = inputs['compliance']
     capabilities = inputs["capabilities"]
@@ -154,19 +156,24 @@ def recommend_architecture(inputs, services):
     for svc in services:
         score = product_score(svc, features, compliance)
         if score > 0:
-            scored_services.append((svc, score))
-
-    scored_services.sort(key=lambda x: (-x[1], x[0]["name"]))
-
-    seen = set()
-    filtered_services = []
-    for svc, score in scored_services:
-        if svc["name"] not in seen:
             svc_copy = svc.copy()
             svc_copy["score"] = score
-            filtered_services.append(svc_copy)
-            seen.add(svc["name"])
+            scored_services.append(svc_copy)
 
+    # Filter by score threshold first
+    filtered_services = [svc for svc in scored_services if svc["score"] >= min_score]
+
+    # Sort by score (desc), then name
+    filtered_services.sort(key=lambda x: (-x["score"], x["name"]))
+
+    # Take Top N overall
+    filtered_services = filtered_services[:top_n]
+
+    # Deduplicate by service name (shouldn't be needed, but just in case)
+    seen = set()
+    filtered_services = [svc for svc in filtered_services if not (svc["name"] in seen or seen.add(svc["name"]))]
+
+    # Build alternatives per category
     categories = {}
     for svc in filtered_services:
         categories.setdefault(svc["category"], []).append(svc)
@@ -201,18 +208,25 @@ def recommend_architecture(inputs, services):
         )
         doc_links.append(f"- [{name}]({svc.get('docs','')})")
 
+    # Build a simple architecture diagram (Mermaid)
     arch_diagram = ""
     if filtered_services:
         diagram_lines = []
-        idx = 1
-        last = None
-        main_cats = ["IoT", "Integration", "Compute", "AI + ML", "Analytics", "Storage", "Web", "Databases", "Monitoring"]
-        used_cats = [cat for cat in main_cats if cat in categories]
-        prev_letter = "A"
-        for i, cat in enumerate(used_cats):
-            svc = categories[cat][0]
-            letter = chr(65+i)
-            if i == 0:
+        used_cats = []
+        cat_to_letter = {}
+        letter_ord = 65  # A
+        # Only use the main categories present in the filtered services, in the order they appear
+        for svc in filtered_services:
+            cat = svc["category"]
+            if cat not in used_cats:
+                used_cats.append(cat)
+                cat_to_letter[cat] = chr(letter_ord)
+                letter_ord += 1
+        prev_letter = None
+        for cat in used_cats:
+            svc = next(s for s in filtered_services if s["category"] == cat)
+            letter = cat_to_letter[cat]
+            if prev_letter is None:
                 diagram_lines.append(f"{letter}[{svc['name']}]")
             else:
                 diagram_lines.append(f"{prev_letter} --> {letter}[{svc['name']}]")
@@ -230,6 +244,10 @@ def mermaid_to_svg(mermaid_code: str):
     return resp.text
 
 st.title("Azure Solution Recommender :cloud:")
+
+st.sidebar.header("Recommendation Controls")
+min_score = st.sidebar.slider("Minimum Score Threshold", 1, 10, 3, 1)
+top_n = st.sidebar.slider("Number of Top Recommendations (N)", 3, 20, 8, 1)
 
 with st.form("requirements_form"):
     use_case = st.text_area("Briefly describe your use case or business goal", height=80)
@@ -263,14 +281,16 @@ if submitted:
             "hybrid cloud": hybrid
         }
     }
-    solution, details, doc_links, arch_diagram, summary_rows = recommend_architecture(user_input, azure_services)
+    solution, details, doc_links, arch_diagram, summary_rows = recommend_architecture(
+        user_input, azure_services, min_score=min_score, top_n=top_n
+    )
     st.header("Recommended Azure Solution")
 
     if summary_rows:
         st.markdown("### Recommended Components Summary")
         st.dataframe(summary_rows)
     else:
-        st.warning("No relevant Azure products matched your requirements. Please try adjusting your input.")
+        st.warning("No relevant Azure products matched your requirements. Please try adjusting your input, score threshold, or Top N.")
 
     if doc_links:
         st.markdown("### Core Components (Docs)")
