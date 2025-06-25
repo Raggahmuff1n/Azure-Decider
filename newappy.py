@@ -5,7 +5,7 @@ st.set_page_config(page_title="Azure Solution Recommender", layout="wide")
 
 @st.cache_data(ttl=3600)
 def fetch_azure_services():
-    # Exhaustive Azure product list as of mid-2024.
+    # FULL Azure product list as of mid-2024.
     return [
         {"name": "API Management", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/api-management/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/api-management/"},
         {"name": "App Configuration", "category": "Developer Tools", "docs": "https://learn.microsoft.com/en-us/azure/azure-app-configuration/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-configuration/"},
@@ -110,6 +110,60 @@ def fetch_azure_services():
         {"name": "Windows Virtual Desktop", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/virtual-desktop/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-desktop/"}
     ]
 
+# Optionally, expand overview/pros/cons as desired.
+SERVICE_OVERVIEWS = {
+    "Azure Cache for Redis": {
+        "overview": "A fully managed, in-memory cache that enables high-performance and scalable architectures. Commonly used for session storage, caching, and pub/sub.",
+        "pros": ["Low latency", "Highly scalable", "Fully managed"],
+        "cons": ["Additional cost", "No persistent storage"]
+    },
+    "Azure Container Apps": {
+        "overview": "Enables you to build and deploy microservices and containerized apps on a serverless platform.",
+        "pros": ["Serverless containers", "Easy scaling", "Kubernetes-based"],
+        "cons": ["Limited advanced customizations compared to AKS"]
+    },
+    "Azure Kubernetes Service (AKS)": {
+        "overview": "Managed Kubernetes container orchestration service for deploying, managing, and scaling containerized applications.",
+        "pros": ["Full Kubernetes control", "Integration with Azure ecosystem", "Scalability"],
+        "cons": ["Steeper learning curve", "Requires cluster management"]
+    },
+    "Azure Data Lake Storage": {
+        "overview": "A scalable and secure data lake for high-performance analytics workloads.",
+        "pros": ["Massive scalability", "Fine-grained security", "Optimized for analytics"],
+        "cons": ["Requires data governance", "Possible overkill for small data"]
+    },
+    "Azure Database for MariaDB": {
+        "overview": "Fully managed MariaDB database with built-in high availability and security.",
+        "pros": ["Managed service", "Automatic patching", "High availability"],
+        "cons": ["Limited to MariaDB workloads"]
+    },
+    "Azure Database for MySQL": {
+        "overview": "Managed MySQL database service for app development and deployment.",
+        "pros": ["Automatic backups", "High availability", "Security features"],
+        "cons": ["Cost", "Some feature limitations vs. self-hosted"]
+    },
+    "Azure Database for PostgreSQL": {
+        "overview": "Managed PostgreSQL database service with high availability, security, and scalability.",
+        "pros": ["Fully managed", "Scalable", "Automatic patching"],
+        "cons": ["More expensive than self-hosted"]
+    },
+    "Azure Container Instances": {
+        "overview": "Run containers without managing servers or clusters. Great for simple, stateless apps or jobs.",
+        "pros": ["Fast startup", "No cluster management", "Pay-per-use"],
+        "cons": ["Not for complex orchestrations", "Short-lived workloads"]
+    }
+    # Add more as needed!
+}
+
+def get_service_overview(name, category):
+    if name in SERVICE_OVERVIEWS:
+        return SERVICE_OVERVIEWS[name]
+    return {
+        "overview": f"A Microsoft Azure service in the {category} category. See documentation for details.",
+        "pros": [],
+        "cons": []
+    }
+
 def extract_features_from_input(use_case, capabilities):
     features = set()
     for cap, sel in capabilities.items():
@@ -134,24 +188,21 @@ def product_score(service, features, compliance):
     score = 0
     name = service["name"].lower()
     category = service.get("category", "").lower()
-    # Heavily weight full phrase matches
     for feature in features:
         if feature in name or feature in category:
             score += 2
         if any(feature in kw for kw in [name, category]):
             score += 1
-    # Compliance bump
     if compliance and compliance.lower() in name:
         score += 2
     return score
 
-def recommend_architecture(inputs, services, min_score=3, top_n=10):
+def recommend_architecture(inputs, services, min_score=3, top_n=8):
     use_case = f"{inputs['use_case']} {inputs['non_func']} {inputs['compliance']}".lower()
     compliance = inputs['compliance']
     capabilities = inputs["capabilities"]
 
     features = extract_features_from_input(use_case, capabilities)
-
     scored_services = []
     for svc in services:
         score = product_score(svc, features, compliance)
@@ -159,25 +210,14 @@ def recommend_architecture(inputs, services, min_score=3, top_n=10):
             svc_copy = svc.copy()
             svc_copy["score"] = score
             scored_services.append(svc_copy)
-
-    # Filter by score threshold first
     filtered_services = [svc for svc in scored_services if svc["score"] >= min_score]
-
-    # Sort by score (desc), then name
     filtered_services.sort(key=lambda x: (-x["score"], x["name"]))
-
-    # Take Top N overall
     filtered_services = filtered_services[:top_n]
-
-    # Deduplicate by service name (shouldn't be needed, but just in case)
     seen = set()
     filtered_services = [svc for svc in filtered_services if not (svc["name"] in seen or seen.add(svc["name"]))]
-
-    # Build alternatives per category
     categories = {}
     for svc in filtered_services:
         categories.setdefault(svc["category"], []).append(svc)
-
     summary_rows = []
     details = []
     doc_links = []
@@ -193,29 +233,31 @@ def recommend_architecture(inputs, services, min_score=3, top_n=10):
         alt_str = ", ".join(alt_links) if alt_links else "None"
         summary_rows.append({
             "Score": svc["score"],
-            "Component": name,
+            "Component": f"[{name}]({svc.get('docs','')})",
             "Category": cat,
             "Alternatives": alt_str,
-            "Docs": f"[Link]({svc.get('docs','')})" if svc.get("docs") else "",
-            "Pricing": f"[Link]({svc.get('pricing','')})" if svc.get("pricing") else ""
+            "Docs": f"[Docs]({svc.get('docs','')})" if svc.get("docs") else "",
+            "Pricing": f"[Pricing]({svc.get('pricing','')})" if svc.get("pricing") else ""
         })
-        details.append(
-            f"- **{name}**\n"
-            f"  *Category*: {cat}\n"
-            f"  *Score*: {svc['score']}\n"
-            f"  *Docs*: {svc.get('docs','')}\n"
-            f"  *Pricing*: {svc.get('pricing','')}\n"
-        )
         doc_links.append(f"- [{name}]({svc.get('docs','')})")
-
-    # Build a simple architecture diagram (Mermaid)
+        overview = get_service_overview(name, cat)
+        pros_str = "\n    ".join(f"- {p}" for p in overview["pros"]) if overview["pros"] else "N/A"
+        cons_str = "\n    ".join(f"- {c}" for c in overview["cons"]) if overview["cons"] else "N/A"
+        details.append(
+            f"### {name}\n"
+            f"**Category:** {cat}\n\n"
+            f"**Score:** {svc['score']}\n\n"
+            f"**Overview:**\n{overview['overview']}\n\n"
+            f"**Pros:**\n{pros_str}\n\n"
+            f"**Cons:**\n{cons_str}\n\n"
+            f"**[Docs]({svc.get('docs','')}) | [Pricing]({svc.get('pricing','')})**\n"
+        )
     arch_diagram = ""
     if filtered_services:
         diagram_lines = []
         used_cats = []
         cat_to_letter = {}
         letter_ord = 65  # A
-        # Only use the main categories present in the filtered services, in the order they appear
         for svc in filtered_services:
             cat = svc["category"]
             if cat not in used_cats:
@@ -232,9 +274,7 @@ def recommend_architecture(inputs, services, min_score=3, top_n=10):
                 diagram_lines.append(f"{prev_letter} --> {letter}[{svc['name']}]")
             prev_letter = letter
         arch_diagram = "flowchart LR\n    " + "\n    ".join(diagram_lines)
-
     solution = [f"{row['Component']} ({row['Category']})" for row in summary_rows]
-
     return solution, details, doc_links, arch_diagram, summary_rows
 
 def mermaid_to_svg(mermaid_code: str):
@@ -285,10 +325,13 @@ if submitted:
         user_input, azure_services, min_score=min_score, top_n=top_n
     )
     st.header("Recommended Azure Solution")
-
     if summary_rows:
         st.markdown("### Recommended Components Summary")
-        st.dataframe(summary_rows)
+        table_md = "| Score | Component | Category | Alternatives | Docs | Pricing |\n"
+        table_md += "|---|---|---|---|---|---|\n"
+        for row in summary_rows:
+            table_md += f"| {row['Score']} | {row['Component']} | {row['Category']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
+        st.markdown(table_md, unsafe_allow_html=True)
     else:
         st.warning("No relevant Azure products matched your requirements. Please try adjusting your input, score threshold, or Top N.")
 
@@ -297,14 +340,13 @@ if submitted:
         st.markdown("\n".join(doc_links))
 
     if details:
-        st.markdown("### Solution Overview")
+        st.markdown("## Solution Overview")
         for d in details:
-            st.markdown(d)
+            st.markdown(d, unsafe_allow_html=True)
 
     if arch_diagram.strip():
         st.markdown("### Architecture Diagram (Mermaid format)")
         st.code(arch_diagram.strip(), language="mermaid")
-        # Render diagram as SVG using Kroki and show in app
         try:
             svg = mermaid_to_svg(arch_diagram)
             st.markdown("### Rendered Architecture Diagram")
