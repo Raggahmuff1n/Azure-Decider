@@ -1,90 +1,29 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 
 st.set_page_config(page_title="Azure Solution Recommender", layout="wide")
 
 @st.cache_data(ttl=3600)
 def fetch_azure_services():
-    base_url = "https://azure.microsoft.com"
-    products_url = f"{base_url}/en-us/products/"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    services = []
-
-    # 1. Scrape main products page for categories and direct products
-    try:
-        resp = requests.get(products_url, headers=headers, timeout=20)
-        resp.raise_for_status()
-    except Exception as e:
-        st.error(f"Failed to fetch Azure products page: {e}")
-        return []
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    # Find category links
-    category_links = set()
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if "/en-us/products/category/" in href:
-            category_links.add(urljoin(base_url, href.split("?")[0]))
-
-    # Scrape products from main sections
-    for section in soup.select("section[data-test-id='products-list-section']"):
-        category = section.select_one("h2")
-        category_name = category.text.strip() if category else "Other"
-        for prod in section.select("li"):
-            name = prod.select_one("span.product-name")
-            link = prod.select_one("a")
-            if name and link:
-                services.append({
-                    "name": name.text.strip(),
-                    "category": category_name,
-                    "docs": urljoin(base_url, link["href"])
-                })
-
-    # 2. Scrape each category page for additional products
-    for cat_url in category_links:
-        try:
-            resp = requests.get(cat_url, headers=headers, timeout=20)
-            if resp.ok:
-                cat_soup = BeautifulSoup(resp.text, "html.parser")
-                cat_name = cat_url.split('/')[-2].replace("-", " ").title()
-                for prod in cat_soup.select("section[data-test-id='products-list-section'] li"):
-                    name = prod.select_one("span.product-name")
-                    link = prod.select_one("a")
-                    if name and link:
-                        services.append({
-                            "name": name.text.strip(),
-                            "category": cat_name,
-                            "docs": urljoin(base_url, link["href"])
-                        })
-        except Exception:
-            continue  # Skip categories that fail to load
-
-    # 3. Deduplicate products by name
-    seen = set()
-    deduped = []
-    for svc in services:
-        svc_name = svc["name"].strip().lower()
-        if svc_name not in seen:
-            deduped.append(svc)
-            seen.add(svc_name)
-
-    # 4. Add Fabric and Power BI if missing
-    if not any('fabric' in s['name'].lower() for s in deduped):
-        deduped.append({
-            "name": "Microsoft Fabric",
-            "category": "Analytics",
-            "docs": "https://learn.microsoft.com/en-us/fabric/"
-        })
-    if not any('power bi' in s['name'].lower() for s in deduped):
-        deduped.append({
-            "name": "Power BI",
-            "category": "Analytics",
-            "docs": "https://powerbi.microsoft.com/"
-        })
-    return deduped
+    return [
+        {"name": "Azure Event Grid", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-grid/"},
+        {"name": "Azure Event Hubs", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/"},
+        {"name": "Azure IoT Hub", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-hub/"},
+        {"name": "Azure Logic Apps", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/"},
+        {"name": "Azure Functions", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/azure-functions/"},
+        {"name": "Azure Machine Learning", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/machine-learning/"},
+        {"name": "Azure Databricks", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/databricks/"},
+        {"name": "Azure Synapse Analytics", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/synapse-analytics/"},
+        {"name": "Azure Data Lake Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/data-lake-storage/"},
+        {"name": "Azure Blob Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/"},
+        {"name": "Azure SQL Database", "category": "Database", "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/database/"},
+        {"name": "Azure Cosmos DB", "category": "Database", "docs": "https://learn.microsoft.com/en-us/azure/cosmos-db/"},
+        {"name": "Azure App Service", "category": "Web", "docs": "https://learn.microsoft.com/en-us/azure/app-service/"},
+        {"name": "Azure Kubernetes Service", "category": "Container", "docs": "https://learn.microsoft.com/en-us/azure/aks/"},
+        {"name": "Microsoft Fabric", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/fabric/"},
+        {"name": "Power BI", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/power-bi/"},
+        {"name": "Azure Monitor", "category": "Monitoring", "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/"},
+        {"name": "Azure DevOps", "category": "DevOps", "docs": "https://learn.microsoft.com/en-us/azure/devops/"},
+    ]
 
 def get_service_docs_and_pricing():
     return {
@@ -291,7 +230,6 @@ def extract_features_from_input(use_case, capabilities):
     for phrase in key_phrases:
         if phrase in use_case_lower:
             features.add(phrase)
-    # Add all individual words as features too
     for word in use_case_lower.split():
         features.add(word.strip(".,"))
     return features
@@ -300,12 +238,10 @@ def product_matches(service, features, compliance):
     name = service["name"].lower()
     category = service.get("category", "").lower()
     for feature in features:
-        # Check all keywords in FEATURE_KEYWORDS
         for kw_list in FEATURE_KEYWORDS.values():
             for kw in kw_list:
                 if kw in name or kw in category or kw == feature:
                     return True
-        # Direct match
         if feature in name or feature in category:
             return True
     if compliance:
@@ -371,7 +307,6 @@ def recommend_architecture(inputs, services):
 
     arch_diagram = ""
     if filtered_services:
-        node_map = {}
         diagram_lines = []
         idx = 1
         last = None
@@ -396,7 +331,6 @@ def recommend_architecture(inputs, services):
 
     return solution, details, doc_links, arch_diagram, summary_rows
 
-# ---- UI ----
 st.title("Azure Solution Recommender :cloud:")
 
 with st.form("requirements_form"):
@@ -415,7 +349,7 @@ with st.form("requirements_form"):
     submitted = st.form_submit_button("Recommend Azure Solution")
 
 if submitted:
-    st.info("Fetching latest Azure product catalog and generating your recommendation...")
+    st.info("Fetching Azure product catalog and generating your recommendation...")
     azure_services = fetch_azure_services()
     user_input = {
         "use_case": use_case,
