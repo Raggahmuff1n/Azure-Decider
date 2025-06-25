@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 
 st.set_page_config(page_title="Azure Solution Recommender", layout="wide")
 
@@ -110,7 +111,6 @@ def fetch_azure_services():
         {"name": "Windows Virtual Desktop", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/virtual-desktop/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-desktop/"}
     ]
 
-# Optionally, expand overview/pros/cons as desired.
 SERVICE_OVERVIEWS = {
     "Azure Cache for Redis": {
         "overview": "A fully managed, in-memory cache that enables high-performance and scalable architectures. Commonly used for session storage, caching, and pub/sub.",
@@ -219,8 +219,6 @@ def recommend_architecture(inputs, services, min_score=3, top_n=8):
     for svc in filtered_services:
         categories.setdefault(svc["category"], []).append(svc)
     summary_rows = []
-    details = []
-    doc_links = []
     for svc in filtered_services:
         name = svc["name"]
         cat = svc.get("category", "")
@@ -231,57 +229,106 @@ def recommend_architecture(inputs, services, min_score=3, top_n=8):
             if alt_svc:
                 alt_links.append(f"[{alt}]({alt_svc['docs']})")
         alt_str = ", ".join(alt_links) if alt_links else "None"
+        overview = get_service_overview(name, cat)
         summary_rows.append({
             "Score": svc["score"],
-            "Component": f"[{name}]({svc.get('docs','')})",
+            "Service": name,
+            "Docs": svc.get("docs", ""),
             "Category": cat,
+            "Overview": overview["overview"],
+            "Pros": overview["pros"],
+            "Cons": overview["cons"],
             "Alternatives": alt_str,
-            "Docs": f"[Docs]({svc.get('docs','')})" if svc.get("docs") else "",
-            "Pricing": f"[Pricing]({svc.get('pricing','')})" if svc.get("pricing") else ""
+            "Pricing": svc.get("pricing", "")
         })
-        doc_links.append(f"- [{name}]({svc.get('docs','')})")
-        overview = get_service_overview(name, cat)
-        pros_str = "\n    ".join(f"- {p}" for p in overview["pros"]) if overview["pros"] else "N/A"
-        cons_str = "\n    ".join(f"- {c}" for c in overview["cons"]) if overview["cons"] else "N/A"
-        details.append(
-            f"### {name}\n"
-            f"**Category:** {cat}\n\n"
-            f"**Score:** {svc['score']}\n\n"
-            f"**Overview:**\n{overview['overview']}\n\n"
-            f"**Pros:**\n{pros_str}\n\n"
-            f"**Cons:**\n{cons_str}\n\n"
-            f"**[Docs]({svc.get('docs','')}) | [Pricing]({svc.get('pricing','')})**\n"
-        )
-    arch_diagram = ""
-    if filtered_services:
-        diagram_lines = []
-        used_cats = []
-        cat_to_letter = {}
-        letter_ord = 65  # A
-        for svc in filtered_services:
-            cat = svc["category"]
-            if cat not in used_cats:
-                used_cats.append(cat)
-                cat_to_letter[cat] = chr(letter_ord)
-                letter_ord += 1
-        prev_letter = None
-        for cat in used_cats:
-            svc = next(s for s in filtered_services if s["category"] == cat)
-            letter = cat_to_letter[cat]
-            if prev_letter is None:
-                diagram_lines.append(f"{letter}[{svc['name']}]")
-            else:
-                diagram_lines.append(f"{prev_letter} --> {letter}[{svc['name']}]")
-            prev_letter = letter
-        arch_diagram = "flowchart LR\n    " + "\n    ".join(diagram_lines)
-    solution = [f"{row['Component']} ({row['Category']})" for row in summary_rows]
-    return solution, details, doc_links, arch_diagram, summary_rows
+    return summary_rows
+
+def generate_solution_overview(use_case, summary_rows):
+    # Group by category for clearer narrative
+    categories = {}
+    for row in summary_rows:
+        categories.setdefault(row["Category"], []).append(row["Service"])
+    # Build a narrative string
+    flows = []
+    if any("IoT" in c for c in categories):
+        flows.append("Device data is ingested via IoT services (such as Azure IoT Hub or IoT Central).")
+    if "Integration" in categories:
+        flows.append("Data/events are integrated and routed using Integration services (e.g., Event Grid, Logic Apps, API Management).")
+    if "Compute" in categories or "Containers" in categories:
+        flows.append("Processing is handled by Compute (Functions, VMs) or Container services (AKS, Container Apps, Container Instances).")
+    if "Databases" in categories or "Storage" in categories:
+        flows.append("Data is stored in managed Databases or Storage services (SQL, Cosmos DB, Data Lake, Blob Storage).")
+    if "Analytics" in categories or "AI + ML" in categories:
+        flows.append("Analytics and AI/ML services provide insights, dashboards, or predictions (e.g., Synapse, Power BI, Cognitive Services).")
+    if "Security" in categories:
+        flows.append("Security and compliance are enforced using services like Azure Key Vault, Sentinel, or Firewall.")
+    if not flows:
+        flows = ["The recommended Azure services address your specified requirements."]
+    # Add service list
+    all_services = ', '.join([row["Service"] for row in summary_rows])
+    return (
+        f"**Architecture Overview:**\n"
+        f"For your use case: *{use_case}*, the architecture brings together these Azure services: {all_services}.<br>\n"
+        f"{' '.join(flows)}"
+    )
+
+def generate_mermaid_diagram(summary_rows):
+    # Group services by category, then connect likely flows
+    category_to_services = {}
+    for row in summary_rows:
+        category_to_services.setdefault(row["Category"], []).append(row["Service"])
+    nodes = []
+    links = []
+    node_ids = {}
+    idx = 0
+    # Assign node IDs for all services
+    for cat in category_to_services:
+        for svc in category_to_services[cat]:
+            node_id = f"N{idx}"
+            node_ids[svc] = node_id
+            nodes.append(f'{node_id}["{svc}"]')
+            idx += 1
+    # Try to connect categories in a logical order
+    category_order = [
+        "IoT", "Integration", "Web", "Compute", "Containers", "Databases", "Storage", "Analytics", "AI + ML", "Security", "Monitoring"
+    ]
+    prev_services = []
+    for cat in category_order:
+        if cat in category_to_services:
+            curr_services = category_to_services[cat]
+            # Link all previous services to all current
+            for prev in prev_services:
+                for curr in curr_services:
+                    links.append(f'{node_ids[prev]} --> {node_ids[curr]}')
+            prev_services = curr_services
+    # If nothing linked (edge case), just show all nodes
+    if not links:
+        arch_diagram = "flowchart LR\n    " + "\n    ".join(nodes)
+    else:
+        arch_diagram = "flowchart LR\n    " + "\n    ".join(nodes + links)
+    return arch_diagram
 
 def mermaid_to_svg(mermaid_code: str):
     url = "https://kroki.io/mermaid/svg"
     resp = requests.post(url, data=mermaid_code.encode("utf-8"))
     resp.raise_for_status()
     return resp.text
+
+def render_condensed_table(summary_rows):
+    # Prepare for DataFrame
+    table_rows = []
+    for row in summary_rows:
+        table_rows.append({
+            "Service": f"[{row['Service']}]({row['Docs']})",
+            "Category": row["Category"],
+            "Overview": row["Overview"][:60] + "..." if len(row["Overview"]) > 60 else row["Overview"],
+            "Pros": ", ".join(row["Pros"]) if row["Pros"] else "-",
+            "Cons": ", ".join(row["Cons"]) if row["Cons"] else "-",
+            "Docs": f"[Docs]({row['Docs']})" if row["Docs"] else "-",
+            "Pricing": f"[Pricing]({row['Pricing']})" if row["Pricing"] else "-"
+        })
+    df = pd.DataFrame(table_rows)
+    st.markdown(df.to_markdown(index=False), unsafe_allow_html=True)
 
 st.title("Azure Solution Recommender :cloud:")
 
@@ -321,30 +368,20 @@ if submitted:
             "hybrid cloud": hybrid
         }
     }
-    solution, details, doc_links, arch_diagram, summary_rows = recommend_architecture(
-        user_input, azure_services, min_score=min_score, top_n=top_n
-    )
-    st.header("Recommended Azure Solution")
+    summary_rows = recommend_architecture(user_input, azure_services, min_score=min_score, top_n=top_n)
+
     if summary_rows:
-        st.markdown("### Recommended Components Summary")
-        table_md = "| Score | Component | Category | Alternatives | Docs | Pricing |\n"
-        table_md += "|---|---|---|---|---|---|\n"
-        for row in summary_rows:
-            table_md += f"| {row['Score']} | {row['Component']} | {row['Category']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
-        st.markdown(table_md, unsafe_allow_html=True)
+        st.markdown("### Solution Architecture Overview")
+        st.markdown(generate_solution_overview(use_case, summary_rows), unsafe_allow_html=True)
+
+        st.markdown("### Recommended Components")
+        render_condensed_table(summary_rows)
     else:
         st.warning("No relevant Azure products matched your requirements. Please try adjusting your input, score threshold, or Top N.")
 
-    if doc_links:
-        st.markdown("### Core Components (Docs)")
-        st.markdown("\n".join(doc_links))
-
-    if details:
-        st.markdown("## Solution Overview")
-        for d in details:
-            st.markdown(d, unsafe_allow_html=True)
-
-    if arch_diagram.strip():
+    # Mermaid diagram
+    if summary_rows:
+        arch_diagram = generate_mermaid_diagram(summary_rows)
         st.markdown("### Architecture Diagram (Mermaid format)")
         st.code(arch_diagram.strip(), language="mermaid")
         try:
@@ -365,13 +402,15 @@ if submitted:
         md += f"**Security/compliance:** {compliance}\n\n"
         md += f"**Capabilities:** {', '.join([k for k,v in user_input['capabilities'].items() if v])}\n\n"
         if summary_rows:
-            md += "## Recommended Components Summary\n\n"
-            md += "| Score | Component | Category | Alternatives | Docs | Pricing |\n"
-            md += "|---|---|---|---|---|---|\n"
+            md += "## Solution Architecture Overview\n"
+            md += generate_solution_overview(use_case, summary_rows)
+            md += "\n\n## Recommended Components\n"
+            # Markdown table
+            md += "| Service | Category | Overview | Pros | Cons | Docs | Pricing |\n"
+            md += "|---|---|---|---|---|---|---|\n"
             for row in summary_rows:
-                md += f"| {row['Score']} | {row['Component']} | {row['Category']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
-        if details:
-            md += "\n## Solution Overview\n" + "\n".join(details) + "\n\n"
-        if arch_diagram.strip():
-            md += "## Architecture Diagram (Mermaid)\n```mermaid\n" + arch_diagram.strip() + "\n```\n"
+                md += f"| [{row['Service']}]({row['Docs']}) | {row['Category']} | {row['Overview']} | {'; '.join(row['Pros']) if row['Pros'] else '-'} | {'; '.join(row['Cons']) if row['Cons'] else '-'} | [Docs]({row['Docs']}) | [Pricing]({row['Pricing']}) |\n"
+        if summary_rows:
+            arch_diagram = generate_mermaid_diagram(summary_rows)
+            md += "\n## Architecture Diagram (Mermaid)\n```mermaid\n" + arch_diagram.strip() + "\n```\n"
         st.download_button("Download Markdown", data=md, file_name="azure_solution.md", mime="text/markdown")
