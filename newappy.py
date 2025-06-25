@@ -1,218 +1,114 @@
 import streamlit as st
+import requests
 
 st.set_page_config(page_title="Azure Solution Recommender", layout="wide")
 
 @st.cache_data(ttl=3600)
 def fetch_azure_services():
+    # Exhaustive Azure product list as of mid-2024.
     return [
-        {"name": "Azure Event Grid", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-grid/"},
-        {"name": "Azure Event Hubs", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/"},
-        {"name": "Azure IoT Hub", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-hub/"},
-        {"name": "Azure Logic Apps", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/"},
-        {"name": "Azure Functions", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/azure-functions/"},
-        {"name": "Azure Machine Learning", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/machine-learning/"},
-        {"name": "Azure Databricks", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/databricks/"},
-        {"name": "Azure Synapse Analytics", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/synapse-analytics/"},
-        {"name": "Azure Data Lake Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/data-lake-storage/"},
-        {"name": "Azure Blob Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/"},
-        {"name": "Azure SQL Database", "category": "Database", "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/database/"},
-        {"name": "Azure Cosmos DB", "category": "Database", "docs": "https://learn.microsoft.com/en-us/azure/cosmos-db/"},
-        {"name": "Azure App Service", "category": "Web", "docs": "https://learn.microsoft.com/en-us/azure/app-service/"},
-        {"name": "Azure Kubernetes Service", "category": "Container", "docs": "https://learn.microsoft.com/en-us/azure/aks/"},
-        {"name": "Microsoft Fabric", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/fabric/"},
-        {"name": "Power BI", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/power-bi/"},
-        {"name": "Azure Monitor", "category": "Monitoring", "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/"},
-        {"name": "Azure DevOps", "category": "DevOps", "docs": "https://learn.microsoft.com/en-us/azure/devops/"},
+        {"name": "API Management", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/api-management/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/api-management/"},
+        {"name": "App Configuration", "category": "Developer Tools", "docs": "https://learn.microsoft.com/en-us/azure/azure-app-configuration/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-configuration/"},
+        {"name": "App Service", "category": "Web", "docs": "https://learn.microsoft.com/en-us/azure/app-service/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-service/"},
+        {"name": "Application Gateway", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/application-gateway/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/application-gateway/"},
+        {"name": "Automation", "category": "Management", "docs": "https://learn.microsoft.com/en-us/azure/automation/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/automation/"},
+        {"name": "Azure Active Directory", "category": "Identity", "docs": "https://learn.microsoft.com/en-us/azure/active-directory/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/active-directory/"},
+        {"name": "Azure Arc", "category": "Hybrid", "docs": "https://learn.microsoft.com/en-us/azure/azure-arc/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-arc/"},
+        {"name": "Azure Bastion", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/bastion/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-bastion/"},
+        {"name": "Azure Blob Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/blobs/"},
+        {"name": "Azure Cache for Redis", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cache/"},
+        {"name": "Azure Cognitive Services", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/cognitive-services/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/"},
+        {"name": "Azure Container Apps", "category": "Containers", "docs": "https://learn.microsoft.com/en-us/azure/container-apps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-apps/"},
+        {"name": "Azure Container Instances", "category": "Containers", "docs": "https://learn.microsoft.com/en-us/azure/container-instances/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-instances/"},
+        {"name": "Azure Cosmos DB", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/cosmos-db/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cosmos-db/"},
+        {"name": "Azure Data Box", "category": "Migration", "docs": "https://learn.microsoft.com/en-us/azure/databox/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/databox/"},
+        {"name": "Azure Data Explorer", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/data-explorer/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/data-explorer/"},
+        {"name": "Azure Data Lake Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/data-lake-storage/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/data-lake/"},
+        {"name": "Azure Database for MariaDB", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/mariadb/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/mariadb/"},
+        {"name": "Azure Database for MySQL", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/mysql/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/mysql/"},
+        {"name": "Azure Database for PostgreSQL", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/postgresql/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/postgresql/"},
+        {"name": "Azure DevOps", "category": "DevOps", "docs": "https://learn.microsoft.com/en-us/azure/devops/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/devops-services/"},
+        {"name": "Azure DNS", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/dns/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/dns/"},
+        {"name": "Azure Event Grid", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-grid/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-grid/"},
+        {"name": "Azure Event Hubs", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/"},
+        {"name": "Azure ExpressRoute", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/expressroute/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/expressroute/"},
+        {"name": "Azure Firewall", "category": "Security", "docs": "https://learn.microsoft.com/en-us/azure/firewall/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-firewall/"},
+        {"name": "Azure Front Door", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/frontdoor/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/frontdoor/"},
+        {"name": "Azure Functions", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/azure-functions/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/functions/"},
+        {"name": "Azure HDInsight", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/hdinsight/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/hdinsight/"},
+        {"name": "Azure IoT Central", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-central/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-central/"},
+        {"name": "Azure IoT Edge", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-edge/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-edge/"},
+        {"name": "Azure IoT Hub", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-hub/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-hub/"},
+        {"name": "Azure Key Vault", "category": "Security", "docs": "https://learn.microsoft.com/en-us/azure/key-vault/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/key-vault/"},
+        {"name": "Azure Kubernetes Service (AKS)", "category": "Containers", "docs": "https://learn.microsoft.com/en-us/azure/aks/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/"},
+        {"name": "Azure Load Balancer", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/load-balancer/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/load-balancer/"},
+        {"name": "Azure Logic Apps", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/logic-apps/"},
+        {"name": "Azure Machine Learning", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/machine-learning/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/machine-learning/"},
+        {"name": "Azure Managed Disks", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/managed-disks/"},
+        {"name": "Azure Media Services", "category": "Media", "docs": "https://learn.microsoft.com/en-us/azure/media-services/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/media-services/"},
+        {"name": "Azure NetApp Files", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/azure-netapp-files/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/netapp-files/"},
+        {"name": "Azure OpenAI Service", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/ai-services/openai/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/"},
+        {"name": "Azure Policy", "category": "Governance", "docs": "https://learn.microsoft.com/en-us/azure/governance/policy/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/policy/"},
+        {"name": "Azure Private Link", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/private-link/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/private-link/"},
+        {"name": "Azure Sentinel", "category": "Security", "docs": "https://learn.microsoft.com/en-us/azure/sentinel/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/microsoft-sentinel/"},
+        {"name": "Azure Site Recovery", "category": "Migration", "docs": "https://learn.microsoft.com/en-us/azure/site-recovery/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/site-recovery/"},
+        {"name": "Azure SQL Database", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/database/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-sql-database/"},
+        {"name": "Azure SQL Managed Instance", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-sql-managed-instance/"},
+        {"name": "Azure Stack", "category": "Hybrid", "docs": "https://learn.microsoft.com/en-us/azure-stack/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-stack/"},
+        {"name": "Azure Storage Accounts", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage-accounts/"},
+        {"name": "Azure Stream Analytics", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/stream-analytics/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/stream-analytics/"},
+        {"name": "Azure Synapse Analytics", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/synapse-analytics/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/synapse-analytics/"},
+        {"name": "Azure Traffic Manager", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/traffic-manager/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/traffic-manager/"},
+        {"name": "Azure Virtual Desktop", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/virtual-desktop/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-desktop/"},
+        {"name": "Azure Virtual Machines", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/virtual-machines/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-machines/"},
+        {"name": "Azure Virtual Network", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/virtual-network/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-network/"},
+        {"name": "Azure VPN Gateway", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/vpn-gateway/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/vpn-gateway/"},
+        {"name": "Batch", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/batch/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/batch/"},
+        {"name": "Blob Storage", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/blobs/"},
+        {"name": "Cognitive Search", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/search/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/search/"},
+        {"name": "Container Registry", "category": "Containers", "docs": "https://learn.microsoft.com/en-us/azure/container-registry/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-registry/"},
+        {"name": "Content Delivery Network (CDN)", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/cdn/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cdn/"},
+        {"name": "Cosmos DB", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/cosmos-db/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cosmos-db/"},
+        {"name": "Data Factory", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/data-factory/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/data-factory/"},
+        {"name": "Data Lake Analytics", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/data-lake-analytics/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/data-lake-analytics/"},
+        {"name": "Databricks", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/databricks/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/databricks/"},
+        {"name": "DevTest Labs", "category": "Developer Tools", "docs": "https://learn.microsoft.com/en-us/azure/devtest-labs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/devtest-labs/"},
+        {"name": "Event Grid", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-grid/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-grid/"},
+        {"name": "Event Hubs", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/"},
+        {"name": "Functions", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/azure-functions/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/functions/"},
+        {"name": "HDInsight", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/hdinsight/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/hdinsight/"},
+        {"name": "IoT Central", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-central/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-central/"},
+        {"name": "IoT Edge", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-edge/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-edge/"},
+        {"name": "IoT Hub", "category": "IoT", "docs": "https://learn.microsoft.com/en-us/azure/iot-hub/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-hub/"},
+        {"name": "Key Vault", "category": "Security", "docs": "https://learn.microsoft.com/en-us/azure/key-vault/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/key-vault/"},
+        {"name": "Kubernetes Service", "category": "Containers", "docs": "https://learn.microsoft.com/en-us/azure/aks/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/"},
+        {"name": "Load Balancer", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/load-balancer/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/load-balancer/"},
+        {"name": "Logic Apps", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/logic-apps/"},
+        {"name": "Machine Learning", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/machine-learning/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/machine-learning/"},
+        {"name": "Managed Disks", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/managed-disks/"},
+        {"name": "Media Services", "category": "Media", "docs": "https://learn.microsoft.com/en-us/azure/media-services/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/media-services/"},
+        {"name": "Microsoft Defender for Cloud", "category": "Security", "docs": "https://learn.microsoft.com/en-us/azure/defender-for-cloud/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/defender-for-cloud/"},
+        {"name": "Microsoft Fabric", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/fabric/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/microsoft-fabric/"},
+        {"name": "Monitor", "category": "Monitoring", "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/"},
+        {"name": "Network Watcher", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/network-watcher/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/network-watcher/"},
+        {"name": "OpenAI Service", "category": "AI + ML", "docs": "https://learn.microsoft.com/en-us/azure/ai-services/openai/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/"},
+        {"name": "Policy", "category": "Governance", "docs": "https://learn.microsoft.com/en-us/azure/governance/policy/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/policy/"},
+        {"name": "Power BI", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/power-bi/", "pricing": "https://powerbi.microsoft.com/en-us/pricing/"},
+        {"name": "Private Link", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/private-link/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/private-link/"},
+        {"name": "Service Bus", "category": "Integration", "docs": "https://learn.microsoft.com/en-us/azure/service-bus-messaging/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/service-bus/"},
+        {"name": "SignalR", "category": "Web", "docs": "https://learn.microsoft.com/en-us/azure/azure-signalr/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/signalr-service/"},
+        {"name": "Site Recovery", "category": "Management", "docs": "https://learn.microsoft.com/en-us/azure/site-recovery/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/site-recovery/"},
+        {"name": "SQL Database", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/database/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-sql-database/"},
+        {"name": "SQL Managed Instance", "category": "Databases", "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/managed-instance/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-sql-managed-instance/"},
+        {"name": "Storage Accounts", "category": "Storage", "docs": "https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage-accounts/"},
+        {"name": "Stream Analytics", "category": "Analytics", "docs": "https://learn.microsoft.com/en-us/azure/stream-analytics/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/stream-analytics/"},
+        {"name": "Traffic Manager", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/traffic-manager/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/traffic-manager/"},
+        {"name": "Virtual Machines", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/virtual-machines/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-machines/"},
+        {"name": "Virtual Network", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/virtual-network/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-network/"},
+        {"name": "VPN Gateway", "category": "Networking", "docs": "https://learn.microsoft.com/en-us/azure/vpn-gateway/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/vpn-gateway/"},
+        {"name": "Web Application Firewall", "category": "Security", "docs": "https://learn.microsoft.com/en-us/azure/web-application-firewall/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/web-application-firewall/"},
+        {"name": "Windows Virtual Desktop", "category": "Compute", "docs": "https://learn.microsoft.com/en-us/azure/virtual-desktop/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-desktop/"}
     ]
-
-def get_service_docs_and_pricing():
-    return {
-        "Azure Data Factory": {
-            "docs": "https://learn.microsoft.com/en-us/azure/data-factory/introduction",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/data-factory/"
-        },
-        "Azure Data Lake Storage": {
-            "docs": "https://learn.microsoft.com/en-us/azure/storage/data-lake-storage/introduction",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/data-lake/"
-        },
-        "Microsoft Fabric": {
-            "docs": "https://learn.microsoft.com/en-us/fabric/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/microsoft-fabric/"
-        },
-        "Power BI": {
-            "docs": "https://learn.microsoft.com/en-us/power-bi/fundamentals/power-bi-overview",
-            "pricing": "https://powerbi.microsoft.com/en-us/pricing/"
-        },
-        "Azure Synapse Analytics": {
-            "docs": "https://learn.microsoft.com/en-us/azure/synapse-analytics/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/synapse-analytics/"
-        },
-        "Azure Databricks": {
-            "docs": "https://learn.microsoft.com/en-us/azure/databricks/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/databricks/"
-        },
-        "Azure SQL Database": {
-            "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/database/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-sql-database/"
-        },
-        "Azure Blob Storage": {
-            "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/blobs/"
-        },
-        "Azure Machine Learning": {
-            "docs": "https://learn.microsoft.com/en-us/azure/machine-learning/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/machine-learning/"
-        },
-        "Azure Kubernetes Service": {
-            "docs": "https://learn.microsoft.com/en-us/azure/aks/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/"
-        },
-        "Azure App Service": {
-            "docs": "https://learn.microsoft.com/en-us/azure/app-service/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-service/"
-        },
-        "Azure Functions": {
-            "docs": "https://learn.microsoft.com/en-us/azure/azure-functions/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/functions/"
-        },
-        "Azure Cosmos DB": {
-            "docs": "https://learn.microsoft.com/en-us/azure/cosmos-db/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/cosmos-db/"
-        },
-        "Azure Monitor": {
-            "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/"
-        },
-        "Azure DevOps": {
-            "docs": "https://learn.microsoft.com/en-us/azure/devops/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/devops-services/"
-        },
-        "Azure Logic Apps": {
-            "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/logic-apps/"
-        },
-        "Azure Event Grid": {
-            "docs": "https://learn.microsoft.com/en-us/azure/event-grid/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-grid/"
-        },
-        "Azure Event Hubs": {
-            "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/",
-            "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/"
-        }
-    }
-
-FEATURE_KEYWORDS = {
-    "ai/ml": ["machine learning", "databricks", "cognitive services", "ai", "bot"],
-    "data analytics": ["analytics", "bi", "synapse", "fabric", "power bi", "databricks"],
-    "devops": ["devops", "pipelines", "repos", "artifacts", "test plans"],
-    "serverless": ["functions", "logic apps", "event grid", "event hub"],
-    "hybrid cloud": ["arc", "stack", "expressroute"],
-    "storage": ["storage", "blob", "data lake", "cosmos db", "sql database"],
-    "web app": ["app service", "web app"],
-    "container": ["kubernetes", "container", "aks"],
-    "monitoring": ["monitor", "log analytics", "insights"],
-    "integration": ["data factory", "logic apps", "event grid", "service bus"],
-    "iot": ["iot", "event hub", "event grid", "stream", "edge"]
-}
-
-COMPLIANCE_KEYWORDS = {
-    "gdpr": ["sql", "data factory", "fabric", "power bi", "synapse", "storage", "machine learning"],
-    "hipaa": ["sql", "data factory", "fabric", "power bi", "synapse", "storage", "machine learning"],
-    "soc 2": ["sql", "data factory", "fabric", "power bi", "synapse", "storage", "machine learning"],
-}
-
-RICH_DETAILS = {
-    "Azure Data Factory": {
-        "pros": "Highly scalable ETL, integrates with 90+ data sources, low-code UX.",
-        "cons": "Complex orchestrations can be challenging to debug.",
-        "compliance": "Supports Azure compliance standards (GDPR, HIPAA, etc.)",
-    },
-    "Azure Data Lake Storage": {
-        "pros": "Massive scalability, hierarchical namespace, integrates with analytics engines.",
-        "cons": "Performance tuning needed for many small files.",
-        "compliance": "Supports data encryption, access control, GDPR, HIPAA.",
-    },
-    "Microsoft Fabric": {
-        "pros": "Unified SaaS analytics, integrates data engineering, warehousing, AI, and BI.",
-        "cons": "Newer product, features evolving.",
-        "compliance": "Enterprise-grade security, compliance certifications.",
-    },
-    "Power BI": {
-        "pros": "Top-class interactive dashboards, self-service BI, direct data source integration.",
-        "cons": "Premium features require additional licensing.",
-        "compliance": "Meets security/compliance standards, supports row-level security.",
-    },
-    "Azure Synapse Analytics": {
-        "pros": "Integrated analytics service, supports big data & data warehousing, serverless options.",
-        "cons": "Learning curve, cost management needed.",
-        "compliance": "Built-in security, data protection and compliance standards.",
-    },
-    "Azure Databricks": {
-        "pros": "Collaborative Apache Spark-based analytics, ML workflows, scalable compute.",
-        "cons": "Requires Spark expertise, integration overhead.",
-        "compliance": "Compliant with Azure security & compliance standards.",
-    },
-    "Azure SQL Database": {
-        "pros": "Managed relational DB, high availability, scaling, T-SQL support.",
-        "cons": "May require migration for non-Microsoft SQL workloads.",
-        "compliance": "Meets enterprise security and compliance standards.",
-    },
-    "Azure Blob Storage": {
-        "pros": "Low-cost, massively scalable, supports unstructured data.",
-        "cons": "Not suitable for fast transactional workloads.",
-        "compliance": "Encryption at rest, compliance certifications.",
-    },
-    "Azure Machine Learning": {
-        "pros": "End-to-end ML, MLOps, AutoML, scalable training.",
-        "cons": "Service complexity, usage costs.",
-        "compliance": "Supports responsible AI, compliance, and security.",
-    },
-    "Azure Kubernetes Service": {
-        "pros": "Managed Kubernetes, scaling, integration with Azure services.",
-        "cons": "Requires container/Kubernetes expertise.",
-        "compliance": "Built-in security and compliance.",
-    },
-    "Azure App Service": {
-        "pros": "PaaS for web apps, auto-scaling, DevOps integration.",
-        "cons": "Not ideal for highly customized OS requirements.",
-        "compliance": "Supports ISO, SOC, PCI, and more.",
-    },
-    "Azure Functions": {
-        "pros": "Event-driven serverless compute, pay-per-execution, easy scaling.",
-        "cons": "Cold start, limited execution time.",
-        "compliance": "Supports most Azure compliance certifications.",
-    },
-    "Azure Cosmos DB": {
-        "pros": "Globally distributed, multi-model database, low-latency.",
-        "cons": "Pricing can be complex.",
-        "compliance": "Meets major compliance requirements.",
-    },
-    "Azure Monitor": {
-        "pros": "Unified monitoring, metrics, and logs, integration with Azure services.",
-        "cons": "Can generate large data volumes.",
-        "compliance": "Supports Azure compliance certifications.",
-    },
-    "Azure DevOps": {
-        "pros": "Comprehensive CI/CD, project tracking, integrations.",
-        "cons": "Overlapping features with GitHub, learning curve.",
-        "compliance": "Compliant with industry standards.",
-    },
-    "Azure Logic Apps": {
-        "pros": "Automated workflows, connectors for 200+ services.",
-        "cons": "Performance limits for high-throughput scenarios.",
-        "compliance": "Supports Azure compliance certifications.",
-    },
-    "Azure Event Grid": {
-        "pros": "Serverless event routing, seamless integration, supports millions of events per second.",
-        "cons": "Complex event-driven architectures can be hard to debug.",
-        "compliance": "Built-in security, compliance certifications.",
-    },
-    "Azure Event Hubs": {
-        "pros": "Big data streaming, real-time ingestion, integrates with analytics services.",
-        "cons": "Requires partition management for high throughput.",
-        "compliance": "Enterprise security and compliance.",
-    }
-}
 
 def extract_features_from_input(use_case, capabilities):
     features = set()
@@ -234,102 +130,104 @@ def extract_features_from_input(use_case, capabilities):
         features.add(word.strip(".,"))
     return features
 
-def product_matches(service, features, compliance):
+def product_score(service, features, compliance):
+    score = 0
     name = service["name"].lower()
     category = service.get("category", "").lower()
     for feature in features:
-        for kw_list in FEATURE_KEYWORDS.values():
-            for kw in kw_list:
-                if kw in name or kw in category or kw == feature:
-                    return True
         if feature in name or feature in category:
-            return True
-    if compliance:
-        for c_key, svcs in COMPLIANCE_KEYWORDS.items():
-            if c_key in compliance.lower():
-                for kw in svcs:
-                    if kw in name:
-                        return True
-    return False
+            score += 2
+        if any(feature in kw for kw in [name, category]):
+            score += 1
+    if compliance and compliance.lower() in name:
+        score += 2
+    return score
 
 def recommend_architecture(inputs, services):
-    service_info = get_service_docs_and_pricing()
     use_case = f"{inputs['use_case']} {inputs['non_func']} {inputs['compliance']}".lower()
     compliance = inputs['compliance']
     capabilities = inputs["capabilities"]
 
     features = extract_features_from_input(use_case, capabilities)
 
-    relevant_services = []
+    scored_services = []
     for svc in services:
-        if product_matches(svc, features, compliance):
-            relevant_services.append(svc)
+        score = product_score(svc, features, compliance)
+        if score > 0:
+            scored_services.append((svc, score))
+
+    scored_services.sort(key=lambda x: (-x[1], x[0]["name"]))
 
     seen = set()
     filtered_services = []
-    for svc in relevant_services:
+    for svc, score in scored_services:
         if svc["name"] not in seen:
-            filtered_services.append(svc)
+            svc_copy = svc.copy()
+            svc_copy["score"] = score
+            filtered_services.append(svc_copy)
             seen.add(svc["name"])
 
-    filtered_services = sorted(filtered_services, key=lambda x: (x.get("category",""), x["name"]))
+    categories = {}
+    for svc in filtered_services:
+        categories.setdefault(svc["category"], []).append(svc)
 
     summary_rows = []
     details = []
     doc_links = []
     for svc in filtered_services:
         name = svc["name"]
-        info = service_info.get(name, {})
-        alt_names = [s["name"] for s in filtered_services if s["category"] == svc["category"] and s["name"] != name]
+        cat = svc.get("category", "")
+        alt_names = [s["name"] for s in categories.get(cat, []) if s["name"] != name][:3]
         alt_links = []
-        for alt in alt_names[:3]:
-            alt_info = service_info.get(alt, {})
-            if alt_info.get("docs"):
-                alt_links.append(f"[{alt}]({alt_info['docs']})")
+        for alt in alt_names:
+            alt_svc = next((s for s in filtered_services if s["name"] == alt), None)
+            if alt_svc:
+                alt_links.append(f"[{alt}]({alt_svc['docs']})")
         alt_str = ", ".join(alt_links) if alt_links else "None"
         summary_rows.append({
+            "Score": svc["score"],
             "Component": name,
-            "Category": svc.get("category", ""),
+            "Category": cat,
             "Alternatives": alt_str,
-            "Docs": f"[Link]({info.get('docs', svc.get('docs',''))})" if info.get("docs") or svc.get("docs") else "",
-            "Pricing": f"[Link]({info.get('pricing','')})" if info.get("pricing") else ""
+            "Docs": f"[Link]({svc.get('docs','')})" if svc.get("docs") else "",
+            "Pricing": f"[Link]({svc.get('pricing','')})" if svc.get("pricing") else ""
         })
-        rich = RICH_DETAILS.get(name, {})
         details.append(
             f"- **{name}**\n"
-            f"  *Category*: {svc.get('category')}\n"
-            f"  *Pros*: {rich.get('pros','N/A')}\n"
-            f"  *Cons*: {rich.get('cons','N/A')}\n"
-            f"  *Compliance*: {rich.get('compliance','N/A')}\n"
-            f"  [Docs]({info.get('docs', svc.get('docs',''))}) [Pricing]({info.get('pricing','')})"
+            f"  *Category*: {cat}\n"
+            f"  *Score*: {svc['score']}\n"
+            f"  *Docs*: {svc.get('docs','')}\n"
+            f"  *Pricing*: {svc.get('pricing','')}\n"
         )
-        doc_links.append(f"- [{name}]({info.get('docs', svc.get('docs',''))})")
+        doc_links.append(f"- [{name}]({svc.get('docs','')})")
 
     arch_diagram = ""
     if filtered_services:
         diagram_lines = []
         idx = 1
         last = None
-        categories = list(dict.fromkeys([svc.get("category","Other") for svc in filtered_services]))
-        first_by_cat = {cat: next((s for s in filtered_services if s.get("category")==cat), None) for cat in categories}
-        if "Integration" in categories:
-            diagram_lines.append(f"A[Data Sources] --> B[{first_by_cat['Integration']['name']}]")
-            last = "B"
-            idx = 3
-        for cat in categories:
-            if cat == "Integration":
-                continue
-            svc = first_by_cat[cat]
-            if svc:
-                key = chr(64+idx)
-                diagram_lines.append(f"{last or 'A'} --> {key}[{svc['name']}]")
-                last = key
-                idx += 1
+        main_cats = ["IoT", "Integration", "Compute", "AI + ML", "Analytics", "Storage", "Web", "Databases", "Monitoring"]
+        used_cats = [cat for cat in main_cats if cat in categories]
+        prev_letter = "A"
+        for i, cat in enumerate(used_cats):
+            svc = categories[cat][0]
+            letter = chr(65+i)
+            if i == 0:
+                diagram_lines.append(f"{letter}[{svc['name']}]")
+            else:
+                diagram_lines.append(f"{prev_letter} --> {letter}[{svc['name']}]")
+            prev_letter = letter
         arch_diagram = "flowchart LR\n    " + "\n    ".join(diagram_lines)
 
     solution = [f"{row['Component']} ({row['Category']})" for row in summary_rows]
 
     return solution, details, doc_links, arch_diagram, summary_rows
+
+def mermaid_to_svg(mermaid_code: str):
+    url = "https://kroki.io/mermaid/svg"
+    resp = requests.post(url, data=mermaid_code.encode("utf-8"))
+    resp.raise_for_status()
+    return resp.text
 
 st.title("Azure Solution Recommender :cloud:")
 
@@ -370,7 +268,7 @@ if submitted:
 
     if summary_rows:
         st.markdown("### Recommended Components Summary")
-        st.table(summary_rows)
+        st.dataframe(summary_rows)
     else:
         st.warning("No relevant Azure products matched your requirements. Please try adjusting your input.")
 
@@ -386,6 +284,14 @@ if submitted:
     if arch_diagram.strip():
         st.markdown("### Architecture Diagram (Mermaid format)")
         st.code(arch_diagram.strip(), language="mermaid")
+        # Render diagram as SVG using Kroki and show in app
+        try:
+            svg = mermaid_to_svg(arch_diagram)
+            st.markdown("### Rendered Architecture Diagram")
+            st.markdown(svg, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Failed to render diagram: {e}")
+
     st.markdown("**To get a detailed architecture diagram, try [diagrams.net](https://app.diagrams.net/) or export to Markdown below.**")
 
     if st.button("Export Recommendation as Markdown"):
@@ -398,10 +304,10 @@ if submitted:
         md += f"**Capabilities:** {', '.join([k for k,v in user_input['capabilities'].items() if v])}\n\n"
         if summary_rows:
             md += "## Recommended Components Summary\n\n"
-            md += "| Component | Category | Alternatives | Docs | Pricing |\n"
-            md += "|---|---|---|---|---|\n"
+            md += "| Score | Component | Category | Alternatives | Docs | Pricing |\n"
+            md += "|---|---|---|---|---|---|\n"
             for row in summary_rows:
-                md += f"| {row['Component']} | {row['Category']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
+                md += f"| {row['Score']} | {row['Component']} | {row['Category']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
         if details:
             md += "\n## Solution Overview\n" + "\n".join(details) + "\n\n"
         if arch_diagram.strip():
