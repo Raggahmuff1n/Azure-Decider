@@ -1,17 +1,35 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 st.set_page_config(page_title="Azure Solution Recommender", layout="wide")
 
 @st.cache_data(ttl=3600)
 def fetch_azure_services():
-    url = "https://azure.microsoft.com/en-us/products/"
+    base_url = "https://azure.microsoft.com"
+    products_url = f"{base_url}/en-us/products/"
     headers = {"User-Agent": "Mozilla/5.0"}
-    resp = requests.get(url, headers=headers)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
     services = []
+
+    # 1. Scrape main products page for categories and direct products
+    try:
+        resp = requests.get(products_url, headers=headers, timeout=20)
+        resp.raise_for_status()
+    except Exception as e:
+        st.error(f"Failed to fetch Azure products page: {e}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Find category links
+    category_links = set()
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/en-us/products/category/" in href:
+            category_links.add(urljoin(base_url, href.split("?")[0]))
+
+    # Scrape products from main sections
     for section in soup.select("section[data-test-id='products-list-section']"):
         category = section.select_one("h2")
         category_name = category.text.strip() if category else "Other"
@@ -22,22 +40,51 @@ def fetch_azure_services():
                 services.append({
                     "name": name.text.strip(),
                     "category": category_name,
-                    "docs": "https://azure.microsoft.com" + link["href"]
+                    "docs": urljoin(base_url, link["href"])
                 })
-    # Add Fabric and Power BI explicitly if not present
-    if not any('fabric' in s['name'].lower() for s in services):
-        services.append({
+
+    # 2. Scrape each category page for additional products
+    for cat_url in category_links:
+        try:
+            resp = requests.get(cat_url, headers=headers, timeout=20)
+            if resp.ok:
+                cat_soup = BeautifulSoup(resp.text, "html.parser")
+                cat_name = cat_url.split('/')[-2].replace("-", " ").title()
+                for prod in cat_soup.select("section[data-test-id='products-list-section'] li"):
+                    name = prod.select_one("span.product-name")
+                    link = prod.select_one("a")
+                    if name and link:
+                        services.append({
+                            "name": name.text.strip(),
+                            "category": cat_name,
+                            "docs": urljoin(base_url, link["href"])
+                        })
+        except Exception:
+            continue  # Skip categories that fail to load
+
+    # 3. Deduplicate products by name
+    seen = set()
+    deduped = []
+    for svc in services:
+        svc_name = svc["name"].strip().lower()
+        if svc_name not in seen:
+            deduped.append(svc)
+            seen.add(svc_name)
+
+    # 4. Add Fabric and Power BI if missing
+    if not any('fabric' in s['name'].lower() for s in deduped):
+        deduped.append({
             "name": "Microsoft Fabric",
             "category": "Analytics",
             "docs": "https://learn.microsoft.com/en-us/fabric/"
         })
-    if not any('power bi' in s['name'].lower() for s in services):
-        services.append({
+    if not any('power bi' in s['name'].lower() for s in deduped):
+        deduped.append({
             "name": "Power BI",
             "category": "Analytics",
             "docs": "https://powerbi.microsoft.com/"
         })
-    return services
+    return deduped
 
 def get_service_docs_and_pricing():
     return {
@@ -252,8 +299,6 @@ def extract_features_from_input(use_case, capabilities):
 def product_matches(service, features, compliance):
     name = service["name"].lower()
     category = service.get("category", "").lower()
-
-    # Match on any feature or keyword in name/category
     for feature in features:
         # Check all keywords in FEATURE_KEYWORDS
         for kw_list in FEATURE_KEYWORDS.values():
@@ -263,8 +308,6 @@ def product_matches(service, features, compliance):
         # Direct match
         if feature in name or feature in category:
             return True
-
-    # Compliance logic as before
     if compliance:
         for c_key, svcs in COMPLIANCE_KEYWORDS.items():
             if c_key in compliance.lower():
