@@ -40,7 +40,6 @@ def fetch_azure_services():
     return services
 
 def get_service_docs_and_pricing():
-    # Add docs/pricing for common services. This can be expanded further.
     return {
         "Azure Data Factory": {
             "docs": "https://learn.microsoft.com/en-us/azure/data-factory/introduction",
@@ -105,11 +104,18 @@ def get_service_docs_and_pricing():
         "Azure Logic Apps": {
             "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/",
             "pricing": "https://azure.microsoft.com/en-us/pricing/details/logic-apps/"
+        },
+        "Azure Event Grid": {
+            "docs": "https://learn.microsoft.com/en-us/azure/event-grid/",
+            "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-grid/"
+        },
+        "Azure Event Hubs": {
+            "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/",
+            "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/"
         }
         # Add more as needed
     }
 
-# Features/capabilities mapped to keywords. Each product is mapped by lower-case name matching.
 FEATURE_KEYWORDS = {
     "ai/ml": ["machine learning", "databricks", "cognitive services", "ai", "bot"],
     "data analytics": ["analytics", "bi", "synapse", "fabric", "power bi", "databricks"],
@@ -120,7 +126,8 @@ FEATURE_KEYWORDS = {
     "web app": ["app service", "web app"],
     "container": ["kubernetes", "container", "aks"],
     "monitoring": ["monitor", "log analytics", "insights"],
-    "integration": ["data factory", "logic apps", "event grid", "service bus"]
+    "integration": ["data factory", "logic apps", "event grid", "service bus"],
+    "iot": ["iot", "event hub", "event grid", "stream", "edge"]
 }
 
 COMPLIANCE_KEYWORDS = {
@@ -209,35 +216,47 @@ RICH_DETAILS = {
         "pros": "Automated workflows, connectors for 200+ services.",
         "cons": "Performance limits for high-throughput scenarios.",
         "compliance": "Supports Azure compliance certifications.",
+    },
+    "Azure Event Grid": {
+        "pros": "Serverless event routing, seamless integration, supports millions of events per second.",
+        "cons": "Complex event-driven architectures can be hard to debug.",
+        "compliance": "Built-in security, compliance certifications.",
+    },
+    "Azure Event Hubs": {
+        "pros": "Big data streaming, real-time ingestion, integrates with analytics services.",
+        "cons": "Requires partition management for high throughput.",
+        "compliance": "Enterprise security and compliance.",
     }
 }
 
+
 def extract_features_from_input(use_case, capabilities):
-    # Gather features/capabilities from user input and checkbox selections
     features = set()
     for cap, sel in capabilities.items():
         if sel:
             features.add(cap.lower())
-    # Extract keywords from use case (simple matching)
+    # Expand: scan for lots of possible Azure scenario keywords
     key_phrases = [
-        "ai/ml", "analytics", "bi", "dashboard", "etl", "pipeline", "data warehouse",
-        "integration", "storage", "serverless", "devops", "web app", "container", "monitoring", "hybrid"
+        "ai/ml", "ai", "ml", "machine learning", "analytics", "bi", "dashboard", "etl", "pipeline", 
+        "data warehouse", "integration", "storage", "serverless", "devops", "web app", "container", 
+        "monitoring", "hybrid", "database", "cosmos", "kubernetes", "app service", "functions", "logic app",
+        "iot", "event", "event grid", "event hub", "stream", "batch", "data ingestion", "messaging", "workflow"
     ]
+    use_case_lower = use_case.lower()
     for phrase in key_phrases:
-        if phrase in use_case:
+        if phrase in use_case_lower:
             features.add(phrase)
     return features
 
 def product_matches(service, features, compliance):
-    # Returns True if service matches any needed feature or compliance
     name = service["name"].lower()
     category = service.get("category", "").lower()
     matched = False
-    for f in features:
-        possible_keywords = FEATURE_KEYWORDS.get(f, [])
-        for kw in possible_keywords:
+    for label, keywords in FEATURE_KEYWORDS.items():
+        for kw in keywords:
             if kw in name or kw in category:
-                matched = True
+                if label in features or any(kw in f for f in features):
+                    matched = True
     if compliance:
         for c_key, svcs in COMPLIANCE_KEYWORDS.items():
             if c_key in compliance.lower():
@@ -254,13 +273,11 @@ def recommend_architecture(inputs, services):
 
     features = extract_features_from_input(use_case, capabilities)
 
-    # Recommend ALL services that match user needs
     relevant_services = []
     for svc in services:
         if product_matches(svc, features, compliance):
             relevant_services.append(svc)
 
-    # Remove duplicates by service name
     seen = set()
     filtered_services = []
     for svc in relevant_services:
@@ -268,7 +285,6 @@ def recommend_architecture(inputs, services):
             filtered_services.append(svc)
             seen.add(svc["name"])
 
-    # Sort by category
     filtered_services = sorted(filtered_services, key=lambda x: (x.get("category",""), x["name"]))
 
     summary_rows = []
@@ -277,7 +293,6 @@ def recommend_architecture(inputs, services):
     for svc in filtered_services:
         name = svc["name"]
         info = service_info.get(name, {})
-        # Alternatives: other services in the same category, not this one
         alt_names = [s["name"] for s in filtered_services if s["category"] == svc["category"] and s["name"] != name]
         alt_links = []
         for alt in alt_names[:3]:
@@ -303,7 +318,6 @@ def recommend_architecture(inputs, services):
         )
         doc_links.append(f"- [{name}]({info.get('docs', svc.get('docs',''))})")
 
-    # Dynamic architecture diagram (Mermaid) based on category order
     arch_diagram = ""
     if filtered_services:
         node_map = {}
@@ -389,7 +403,6 @@ if submitted:
         st.code(arch_diagram.strip(), language="mermaid")
     st.markdown("**To get a detailed architecture diagram, try [diagrams.net](https://app.diagrams.net/) or export to Markdown below.**")
 
-    # Markdown export option
     if st.button("Export Recommendation as Markdown"):
         md = f"# Azure Solution Recommendation\n\n"
         md += f"**Use case:** {use_case}\n\n"
