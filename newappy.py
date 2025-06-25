@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import json
 
 st.set_page_config(page_title="Azure Solution Recommender", layout="wide")
 
@@ -41,7 +40,7 @@ def fetch_azure_services():
     return services
 
 def get_service_docs_and_pricing():
-    # Expanded docs and pricing for broader Azure services
+    # Add docs/pricing for common services. This can be expanded further.
     return {
         "Azure Data Factory": {
             "docs": "https://learn.microsoft.com/en-us/azure/data-factory/introduction",
@@ -107,59 +106,29 @@ def get_service_docs_and_pricing():
             "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/",
             "pricing": "https://azure.microsoft.com/en-us/pricing/details/logic-apps/"
         }
+        # Add more as needed
     }
 
-# Mapping features/capabilities to Azure products
-FEATURES_TO_PRODUCTS = {
-    "data analytics": [
-        "Azure Synapse Analytics", "Microsoft Fabric", "Power BI", "Azure Data Factory", "Azure Databricks", "Azure Data Lake Storage"
-    ],
-    "ai/ml": [
-        "Azure Machine Learning", "Azure Databricks", "Azure Synapse Analytics", "Azure Data Lake Storage"
-    ],
-    "data integration": [
-        "Azure Data Factory", "Azure Logic Apps"
-    ],
-    "data warehousing": [
-        "Azure Synapse Analytics", "Azure SQL Database", "Microsoft Fabric"
-    ],
-    "bi": [
-        "Power BI", "Microsoft Fabric"
-    ],
-    "dashboard": [
-        "Power BI", "Microsoft Fabric"
-    ],
-    "storage": [
-        "Azure Blob Storage", "Azure Data Lake Storage", "Azure SQL Database", "Azure Cosmos DB"
-    ],
-    "serverless": [
-        "Azure Functions", "Azure Logic Apps"
-    ],
-    "devops": [
-        "Azure DevOps", "GitHub Actions"
-    ],
-    "web app": [
-        "Azure App Service", "Azure Functions", "Azure Kubernetes Service"
-    ],
-    "container": [
-        "Azure Kubernetes Service", "Azure Container Instances"
-    ],
-    "monitoring": [
-        "Azure Monitor", "Log Analytics"
-    ],
-    "hybrid cloud": [
-        "Azure Arc", "Azure Stack"
-    ]
+# Features/capabilities mapped to keywords. Each product is mapped by lower-case name matching.
+FEATURE_KEYWORDS = {
+    "ai/ml": ["machine learning", "databricks", "cognitive services", "ai", "bot"],
+    "data analytics": ["analytics", "bi", "synapse", "fabric", "power bi", "databricks"],
+    "devops": ["devops", "pipelines", "repos", "artifacts", "test plans"],
+    "serverless": ["functions", "logic apps", "event grid", "event hub"],
+    "hybrid cloud": ["arc", "stack", "expressroute"],
+    "storage": ["storage", "blob", "data lake", "cosmos db", "sql database"],
+    "web app": ["app service", "web app"],
+    "container": ["kubernetes", "container", "aks"],
+    "monitoring": ["monitor", "log analytics", "insights"],
+    "integration": ["data factory", "logic apps", "event grid", "service bus"]
 }
 
-# Mapping compliance keywords to Azure compliance info
-COMPLIANCE_SUPPORT = {
-    "gdpr": ["Azure Synapse Analytics", "Azure Data Factory", "Azure SQL Database", "Azure Data Lake Storage", "Microsoft Fabric", "Power BI", "Azure Machine Learning"],
-    "hipaa": ["Azure Synapse Analytics", "Azure Data Factory", "Azure SQL Database", "Azure Data Lake Storage", "Microsoft Fabric", "Power BI", "Azure Machine Learning"],
-    "soc 2": ["Azure Synapse Analytics", "Azure SQL Database", "Azure Data Factory", "Azure Data Lake Storage", "Microsoft Fabric", "Power BI", "Azure Machine Learning"],
+COMPLIANCE_KEYWORDS = {
+    "gdpr": ["sql", "data factory", "fabric", "power bi", "synapse", "storage", "machine learning"],
+    "hipaa": ["sql", "data factory", "fabric", "power bi", "synapse", "storage", "machine learning"],
+    "soc 2": ["sql", "data factory", "fabric", "power bi", "synapse", "storage", "machine learning"],
 }
 
-# Pros/Cons/Compliance for core services (expand as needed)
 RICH_DETAILS = {
     "Azure Data Factory": {
         "pros": "Highly scalable ETL, integrates with 90+ data sources, low-code UX.",
@@ -259,52 +228,23 @@ def extract_features_from_input(use_case, capabilities):
             features.add(phrase)
     return features
 
-def score_service(service, features, compliance_needed):
-    # Score based on feature and compliance match
-    name = service["name"]
-    score = 0
-    # Feature match
-    for feature in features:
-        for k, v in FEATURES_TO_PRODUCTS.items():
-            if feature in k and name in v:
-                score += 4
-    # Compliance match
-    if compliance_needed:
-        for c_key, svcs in COMPLIANCE_SUPPORT.items():
-            if c_key in compliance_needed.lower() and name in svcs:
-                score += 2
-    # Popularity/Category bonus
-    if service.get("category", "").lower() in ["analytics", "ai + machine learning", "compute"]:
-        score += 1
-    return score
-
-def find_alternatives(selected_name, feature_set):
-    # Find services with similar features that are not selected_name
-    alternatives = set()
-    for feature, prods in FEATURES_TO_PRODUCTS.items():
-        if feature in feature_set:
-            for prod in prods:
-                if prod != selected_name:
-                    alternatives.add(prod)
-    return list(alternatives)[:3]  # Limit to 3
-
-def find_architecture_layers(selected_services):
-    # Group selected services by rough architecture layer
-    compute, storage, integration, analytics, monitoring = [], [], [], [], []
-    for s in selected_services:
-        name = s["name"]
-        cat = s.get("category", "").lower()
-        if "analytics" in cat or "bi" in name.lower():
-            analytics.append(name)
-        elif "storage" in cat or "db" in name.lower():
-            storage.append(name)
-        elif "compute" in cat or "kubernetes" in name.lower() or "app service" in name.lower():
-            compute.append(name)
-        elif "integration" in cat or "factory" in name.lower() or "logic app" in name.lower():
-            integration.append(name)
-        elif "monitor" in cat or "monitor" in name.lower():
-            monitoring.append(name)
-    return compute, storage, integration, analytics, monitoring
+def product_matches(service, features, compliance):
+    # Returns True if service matches any needed feature or compliance
+    name = service["name"].lower()
+    category = service.get("category", "").lower()
+    matched = False
+    for f in features:
+        possible_keywords = FEATURE_KEYWORDS.get(f, [])
+        for kw in possible_keywords:
+            if kw in name or kw in category:
+                matched = True
+    if compliance:
+        for c_key, svcs in COMPLIANCE_KEYWORDS.items():
+            if c_key in compliance.lower():
+                for kw in svcs:
+                    if kw in name:
+                        matched = True
+    return matched
 
 def recommend_architecture(inputs, services):
     service_info = get_service_docs_and_pricing()
@@ -314,38 +254,48 @@ def recommend_architecture(inputs, services):
 
     features = extract_features_from_input(use_case, capabilities)
 
-    # Score all services dynamically
-    scored_services = []
+    # Recommend ALL services that match user needs
+    relevant_services = []
     for svc in services:
-        score = score_service(svc, features, compliance)
-        if score > 0:
-            scored_services.append((score, svc))
-    scored_services.sort(reverse=True, key=lambda x: x[0])
-    selected_services = [svc for score, svc in scored_services[:6]]  # Top 6
+        if product_matches(svc, features, compliance):
+            relevant_services.append(svc)
+
+    # Remove duplicates by service name
+    seen = set()
+    filtered_services = []
+    for svc in relevant_services:
+        if svc["name"] not in seen:
+            filtered_services.append(svc)
+            seen.add(svc["name"])
+
+    # Sort by category
+    filtered_services = sorted(filtered_services, key=lambda x: (x.get("category",""), x["name"]))
 
     summary_rows = []
     details = []
     doc_links = []
-    for svc in selected_services:
+    for svc in filtered_services:
         name = svc["name"]
         info = service_info.get(name, {})
-        alt_names = find_alternatives(name, features)
+        # Alternatives: other services in the same category, not this one
+        alt_names = [s["name"] for s in filtered_services if s["category"] == svc["category"] and s["name"] != name]
         alt_links = []
-        for alt in alt_names:
+        for alt in alt_names[:3]:
             alt_info = service_info.get(alt, {})
             if alt_info.get("docs"):
                 alt_links.append(f"[{alt}]({alt_info['docs']})")
         alt_str = ", ".join(alt_links) if alt_links else "None"
         summary_rows.append({
             "Component": name,
-            "Score (1-5)": min(5, max(1, score_service(svc, features, compliance)//2)),
+            "Category": svc.get("category", ""),
             "Alternatives": alt_str,
             "Docs": f"[Link]({info.get('docs', svc.get('docs',''))})" if info.get("docs") or svc.get("docs") else "",
             "Pricing": f"[Link]({info.get('pricing','')})" if info.get("pricing") else ""
         })
         rich = RICH_DETAILS.get(name, {})
         details.append(
-            f"- **{name}**: {rich.get('pros','')}\n"
+            f"- **{name}**\n"
+            f"  *Category*: {svc.get('category')}\n"
             f"  *Pros*: {rich.get('pros','N/A')}\n"
             f"  *Cons*: {rich.get('cons','N/A')}\n"
             f"  *Compliance*: {rich.get('compliance','N/A')}\n"
@@ -353,29 +303,31 @@ def recommend_architecture(inputs, services):
         )
         doc_links.append(f"- [{name}]({info.get('docs', svc.get('docs',''))})")
 
-    # Dynamic architecture diagram (mermaid) based on roles/layers
-    compute, storage, integration, analytics, monitoring = find_architecture_layers(selected_services)
-    diagram_lines = []
-    idx = 1
-    last = None
-    node_map = {}
-    # Start with Data Sources if analytics or integration are present
-    if integration or analytics:
-        diagram_lines.append(f"A[Data Sources] --> B[{integration[0] if integration else analytics[0]}]")
-        node_map['A'] = "Data Sources"
-        node_map['B'] = integration[0] if integration else analytics[0]
-        idx = 3
-        last = "B"
-    for layer in [integration, storage, compute, analytics, monitoring]:
-        for node in layer:
-            key = chr(64+idx)
-            diagram_lines.append(f"{last or 'A'} --> {key}[{node}]")
-            last = key
-            node_map[key] = node
-            idx += 1
-    arch_diagram = "flowchart LR\n    " + "\n    ".join(diagram_lines)
+    # Dynamic architecture diagram (Mermaid) based on category order
+    arch_diagram = ""
+    if filtered_services:
+        node_map = {}
+        diagram_lines = []
+        idx = 1
+        last = None
+        categories = list(dict.fromkeys([svc.get("category","Other") for svc in filtered_services]))
+        first_by_cat = {cat: next((s for s in filtered_services if s.get("category")==cat), None) for cat in categories}
+        if "Integration" in categories:
+            diagram_lines.append(f"A[Data Sources] --> B[{first_by_cat['Integration']['name']}]")
+            last = "B"
+            idx = 3
+        for cat in categories:
+            if cat == "Integration":
+                continue
+            svc = first_by_cat[cat]
+            if svc:
+                key = chr(64+idx)
+                diagram_lines.append(f"{last or 'A'} --> {key}[{svc['name']}]")
+                last = key
+                idx += 1
+        arch_diagram = "flowchart LR\n    " + "\n    ".join(diagram_lines)
 
-    solution = [f"{row['Component']} (Score: {row['Score (1-5)']})" for row in summary_rows]
+    solution = [f"{row['Component']} ({row['Category']})" for row in summary_rows]
 
     return solution, details, doc_links, arch_diagram, summary_rows
 
@@ -417,16 +369,21 @@ if submitted:
     solution, details, doc_links, arch_diagram, summary_rows = recommend_architecture(user_input, azure_services)
     st.header("Recommended Azure Solution")
 
-    # Show summary table
-    st.markdown("### Core Components Summary")
-    st.table(summary_rows)
+    if summary_rows:
+        st.markdown("### Recommended Components Summary")
+        st.table(summary_rows)
+    else:
+        st.warning("No relevant Azure products matched your requirements. Please try adjusting your input.")
 
-    st.markdown("### Core Components (Docs)")
-    st.markdown("\n".join(doc_links))
+    if doc_links:
+        st.markdown("### Core Components (Docs)")
+        st.markdown("\n".join(doc_links))
 
-    st.markdown("### Solution Overview")
-    for d in details:
-        st.markdown(d)
+    if details:
+        st.markdown("### Solution Overview")
+        for d in details:
+            st.markdown(d)
+
     if arch_diagram.strip():
         st.markdown("### Architecture Diagram (Mermaid format)")
         st.code(arch_diagram.strip(), language="mermaid")
@@ -441,12 +398,14 @@ if submitted:
         md += f"**Preferred languages/frameworks:** {languages}\n\n"
         md += f"**Security/compliance:** {compliance}\n\n"
         md += f"**Capabilities:** {', '.join([k for k,v in user_input['capabilities'].items() if v])}\n\n"
-        md += "## Core Components Summary\n\n"
-        md += "| Component | Score (1-5) | Alternatives | Docs | Pricing |\n"
-        md += "|---|---|---|---|---|\n"
-        for row in summary_rows:
-            md += f"| {row['Component']} | {row['Score (1-5)']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
-        md += "\n## Solution Overview\n" + "\n".join(details) + "\n\n"
+        if summary_rows:
+            md += "## Recommended Components Summary\n\n"
+            md += "| Component | Category | Alternatives | Docs | Pricing |\n"
+            md += "|---|---|---|---|---|\n"
+            for row in summary_rows:
+                md += f"| {row['Component']} | {row['Category']} | {row['Alternatives']} | {row['Docs']} | {row['Pricing']} |\n"
+        if details:
+            md += "\n## Solution Overview\n" + "\n".join(details) + "\n\n"
         if arch_diagram.strip():
             md += "## Architecture Diagram (Mermaid)\n```mermaid\n" + arch_diagram.strip() + "\n```\n"
         st.download_button("Download Markdown", data=md, file_name="azure_solution.md", mime="text/markdown")
