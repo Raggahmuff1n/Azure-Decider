@@ -2,531 +2,1213 @@ import streamlit as st
 import pandas as pd
 import json
 from typing import Dict, List, Any, Tuple
-import re
-from datetime import datetime
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-st.set_page_config(page_title="Azure Solution Architect Pro", layout="wide", page_icon="☁️")
+st.set_page_config(
+    page_title="Azure Solution Architect Pro", 
+    layout="wide", 
+    page_icon="☁️",
+    initial_sidebar_state="expanded"
+)
 
-# Enhanced Azure Service Catalog with comprehensive coverage
+# Enhanced Azure Service Catalog with Full Coverage
 @st.cache_data(ttl=3600)
-def fetch_enhanced_azure_services():
-    """Comprehensive Azure service catalog with enhanced metadata for solution architecture"""
+def get_comprehensive_azure_services():
+    """Comprehensive Azure service catalog covering all major categories"""
     return [
-        # Analytics & BI - Enhanced for complete data platform
-        {"name": "Azure Synapse Analytics", "category": "Analytics", "cost_tier": "high", "use_cases": ["data_warehouse", "analytics", "big_data", "etl"], "integrates_with": ["Power BI", "Azure Data Lake Storage", "Azure Machine Learning", "Azure Data Factory"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/synapse-analytics/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/synapse-analytics/", "data_role": "processing", "architectural_tier": "analytics"},
-        {"name": "Power BI", "category": "Analytics", "cost_tier": "medium", "use_cases": ["visualization", "dashboards", "business_intelligence", "reporting"], "integrates_with": ["Azure Synapse Analytics", "Azure Data Factory", "Azure SQL Database", "Office 365"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/power-bi/", "pricing": "https://powerbi.microsoft.com/en-us/pricing/", "data_role": "visualization", "architectural_tier": "presentation"},
-        {"name": "Azure Data Factory", "category": "Analytics", "cost_tier": "medium", "use_cases": ["etl", "data_integration", "pipeline", "data_movement"], "integrates_with": ["Azure Synapse Analytics", "Azure Data Lake Storage", "Azure SQL Database", "Power BI"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/data-factory/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/data-factory/", "data_role": "ingestion", "architectural_tier": "integration"},
-        {"name": "Azure Databricks", "category": "Analytics", "cost_tier": "high", "use_cases": ["machine_learning", "analytics", "spark", "data_science"], "integrates_with": ["Azure Machine Learning", "Azure Data Lake Storage", "Power BI", "Azure Synapse Analytics"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/databricks/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/databricks/", "data_role": "processing", "architectural_tier": "analytics"},
-        {"name": "Azure Stream Analytics", "category": "Analytics", "cost_tier": "medium", "use_cases": ["real_time", "streaming", "iot", "event_processing"], "integrates_with": ["Event Hubs", "IoT Hub", "Power BI", "Azure Functions"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/stream-analytics/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/stream-analytics/", "data_role": "processing", "architectural_tier": "analytics"},
-        {"name": "Azure Analysis Services", "category": "Analytics", "cost_tier": "medium", "use_cases": ["olap", "tabular_models", "business_intelligence", "semantic_layer"], "integrates_with": ["Power BI", "Excel", "Azure SQL Database"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/analysis-services/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/analysis-services/", "data_role": "processing", "architectural_tier": "analytics"},
-        {"name": "Microsoft Purview", "category": "Analytics", "cost_tier": "medium", "use_cases": ["data_governance", "data_catalog", "compliance", "data_lineage"], "integrates_with": ["Azure Synapse Analytics", "Azure Data Factory", "Power BI"], "compliance": ["SOC", "HIPAA", "ISO", "GDPR"], "docs": "https://learn.microsoft.com/en-us/purview/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-purview/", "data_role": "governance", "architectural_tier": "management"},
-        
-        # AI & ML - Complete ML platform
-        {"name": "Azure Machine Learning", "category": "AI + ML", "cost_tier": "high", "use_cases": ["machine_learning", "model_training", "mlops", "data_science"], "integrates_with": ["Azure Databricks", "Azure Synapse Analytics", "Azure Container Instances", "AKS"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/machine-learning/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/machine-learning/", "data_role": "processing", "architectural_tier": "analytics"},
-        {"name": "Azure Cognitive Services", "category": "AI + ML", "cost_tier": "medium", "use_cases": ["ai", "computer_vision", "nlp", "speech", "translation"], "integrates_with": ["Azure Bot Service", "Azure Functions", "Logic Apps"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/cognitive-services/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/", "data_role": "processing", "architectural_tier": "application"},
-        {"name": "Azure OpenAI Service", "category": "AI + ML", "cost_tier": "high", "use_cases": ["generative_ai", "chatbot", "content_generation", "llm"], "integrates_with": ["Azure Cognitive Services", "Azure Bot Service", "Azure Functions"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/ai-services/openai/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/", "data_role": "processing", "architectural_tier": "application"},
-        {"name": "Azure Bot Service", "category": "AI + ML", "cost_tier": "low", "use_cases": ["chatbot", "conversational_ai", "customer_service"], "integrates_with": ["Azure Cognitive Services", "Azure OpenAI Service", "Teams"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/bot-service/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/bot-service/", "data_role": "interaction", "architectural_tier": "application"},
-        {"name": "Azure Form Recognizer", "category": "AI + ML", "cost_tier": "medium", "use_cases": ["document_processing", "ocr", "form_extraction"], "integrates_with": ["Azure Cognitive Services", "Logic Apps", "Power Automate"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/ai-services/form-recognizer/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/form-recognizer/", "data_role": "processing", "architectural_tier": "application"},
-        {"name": "Azure Computer Vision", "category": "AI + ML", "cost_tier": "medium", "use_cases": ["image_processing", "ocr", "object_detection"], "integrates_with": ["Azure Cognitive Services", "Azure Functions", "Logic Apps"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/ai-services/computer-vision/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/computer-vision/", "data_role": "processing", "architectural_tier": "application"},
-        
-        # Compute - Enhanced for modern applications
-        {"name": "Azure Virtual Machines", "category": "Compute", "cost_tier": "variable", "use_cases": ["windows", "linux", "legacy_apps", "custom_software"], "integrates_with": ["Virtual Network", "Load Balancer", "Azure Monitor"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/virtual-machines/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-machines/", "data_role": "processing", "architectural_tier": "compute"},
-        {"name": "Azure Functions", "category": "Compute", "cost_tier": "low", "use_cases": ["serverless", "microservices", "event_driven", "api"], "integrates_with": ["Logic Apps", "Event Grid", "Cosmos DB", "API Management"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/azure-functions/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/functions/", "data_role": "processing", "architectural_tier": "compute"},
-        {"name": "Azure Batch", "category": "Compute", "cost_tier": "medium", "use_cases": ["batch_processing", "hpc", "parallel_workloads"], "integrates_with": ["Azure Storage", "Virtual Networks", "Azure Monitor"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/batch/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/batch/", "data_role": "processing", "architectural_tier": "compute"},
-        {"name": "Azure Service Fabric", "category": "Compute", "cost_tier": "medium", "use_cases": ["microservices", "distributed_systems", "stateful_services"], "integrates_with": ["Azure Monitor", "Key Vault", "Load Balancer"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/service-fabric/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/service-fabric/", "data_role": "processing", "architectural_tier": "compute"},
-        
-        # Containers - Complete container platform
-        {"name": "Azure Kubernetes Service (AKS)", "category": "Containers", "cost_tier": "medium", "use_cases": ["kubernetes", "microservices", "container_orchestration"], "integrates_with": ["Azure Container Registry", "Azure Monitor", "Azure Active Directory", "Application Gateway"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/aks/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/", "data_role": "processing", "architectural_tier": "compute"},
-        {"name": "Azure Container Apps", "category": "Containers", "cost_tier": "low", "use_cases": ["serverless_containers", "microservices", "event_driven"], "integrates_with": ["Event Grid", "Service Bus", "Azure Monitor"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/container-apps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-apps/", "data_role": "processing", "architectural_tier": "compute"},
-        {"name": "Azure Container Instances", "category": "Containers", "cost_tier": "low", "use_cases": ["simple_containers", "batch_jobs", "dev_test"], "integrates_with": ["Virtual Network", "Azure Files", "Azure Monitor"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/container-instances/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-instances/", "data_role": "processing", "architectural_tier": "compute"},
-        {"name": "Azure Container Registry", "category": "Containers", "cost_tier": "low", "use_cases": ["container_images", "docker_registry", "devops"], "integrates_with": ["AKS", "Container Apps", "Azure DevOps"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/container-registry/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-registry/", "data_role": "storage", "architectural_tier": "management"},
-        
-        # Databases - Complete data platform
-        {"name": "Azure SQL Database", "category": "Databases", "cost_tier": "medium", "use_cases": ["relational_database", "sql_server", "managed_database"], "integrates_with": ["Power BI", "Azure Data Factory", "Azure Functions"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/azure-sql/database/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-sql-database/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure Cosmos DB", "category": "Databases", "cost_tier": "medium", "use_cases": ["nosql", "global_distribution", "multi_model"], "integrates_with": ["Azure Functions", "Azure Synapse Analytics", "Power BI"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/cosmos-db/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cosmos-db/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure Database for PostgreSQL", "category": "Databases", "cost_tier": "medium", "use_cases": ["postgresql", "open_source", "managed_database"], "integrates_with": ["Azure Data Factory", "Power BI", "Azure Monitor"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/postgresql/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/postgresql/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure Database for MySQL", "category": "Databases", "cost_tier": "medium", "use_cases": ["mysql", "open_source", "managed_database"], "integrates_with": ["Azure Data Factory", "Power BI", "Azure Monitor"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/mysql/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/mysql/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure Cache for Redis", "category": "Databases", "cost_tier": "low", "use_cases": ["caching", "session_storage", "real_time"], "integrates_with": ["Azure Functions", "App Service", "AKS"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cache/", "data_role": "storage", "architectural_tier": "data"},
-        
-        # Storage - Complete storage solutions
-        {"name": "Azure Blob Storage", "category": "Storage", "cost_tier": "low", "use_cases": ["object_storage", "backup", "archival", "static_content"], "integrates_with": ["Azure CDN", "Azure Data Factory", "Power BI"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/blobs/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure Data Lake Storage", "category": "Storage", "cost_tier": "medium", "use_cases": ["big_data", "analytics", "data_lake"], "integrates_with": ["Azure Synapse Analytics", "Azure Databricks", "Power BI"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/data-lake/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure Files", "category": "Storage", "cost_tier": "low", "use_cases": ["file_shares", "smb", "nfs"], "integrates_with": ["Virtual Machines", "Container Instances", "AKS"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/storage/files/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/files/", "data_role": "storage", "architectural_tier": "data"},
-        {"name": "Azure NetApp Files", "category": "Storage", "cost_tier": "high", "use_cases": ["enterprise_nas", "hpc", "high_performance"], "integrates_with": ["Virtual Machines", "AKS", "Azure VMware Solution"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/azure-netapp-files/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/netapp/", "data_role": "storage", "architectural_tier": "data"},
-        
-        # Networking - Complete networking stack
-        {"name": "Azure Virtual Network", "category": "Networking", "cost_tier": "low", "use_cases": ["network_isolation", "hybrid_connectivity", "security"], "integrates_with": ["Virtual Machines", "AKS", "Application Gateway"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/virtual-network/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-network/", "data_role": "infrastructure", "architectural_tier": "network"},
-        {"name": "Azure Application Gateway", "category": "Networking", "cost_tier": "medium", "use_cases": ["load_balancer", "ssl_termination", "waf"], "integrates_with": ["Virtual Network", "AKS", "App Service"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/application-gateway/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/application-gateway/", "data_role": "infrastructure", "architectural_tier": "network"},
-        {"name": "Azure Load Balancer", "category": "Networking", "cost_tier": "low", "use_cases": ["load_balancing", "high_availability", "traffic_distribution"], "integrates_with": ["Virtual Machines", "Virtual Network", "AKS"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/load-balancer/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/load-balancer/", "data_role": "infrastructure", "architectural_tier": "network"},
-        {"name": "Azure Front Door", "category": "Networking", "cost_tier": "medium", "use_cases": ["global_load_balancer", "cdn", "waf"], "integrates_with": ["App Service", "Application Gateway", "Blob Storage"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/frontdoor/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/frontdoor/", "data_role": "infrastructure", "architectural_tier": "network"},
-        {"name": "Azure ExpressRoute", "category": "Networking", "cost_tier": "high", "use_cases": ["hybrid_connectivity", "private_connection", "enterprise"], "integrates_with": ["Virtual Network", "Virtual WAN", "Azure Monitor"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/expressroute/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/expressroute/", "data_role": "infrastructure", "architectural_tier": "network"},
-        {"name": "Azure VPN Gateway", "category": "Networking", "cost_tier": "low", "use_cases": ["vpn", "site_to_site", "point_to_site"], "integrates_with": ["Virtual Network", "Azure Monitor", "Network Watcher"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/vpn-gateway/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/vpn-gateway/", "data_role": "infrastructure", "architectural_tier": "network"},
-        
-        # Security - Comprehensive security stack
-        {"name": "Azure Key Vault", "category": "Security", "cost_tier": "low", "use_cases": ["secrets_management", "encryption", "certificates"], "integrates_with": ["App Service", "Azure Functions", "Virtual Machines"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/key-vault/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/key-vault/", "data_role": "security", "architectural_tier": "security"},
-        {"name": "Microsoft Defender for Cloud", "category": "Security", "cost_tier": "medium", "use_cases": ["security_monitoring", "threat_detection", "compliance"], "integrates_with": ["Azure Monitor", "Sentinel", "Logic Apps"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/defender-for-cloud/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/defender-for-cloud/", "data_role": "security", "architectural_tier": "security"},
-        {"name": "Microsoft Sentinel", "category": "Security", "cost_tier": "medium", "use_cases": ["siem", "soar", "security_analytics"], "integrates_with": ["Azure Monitor", "Logic Apps", "Defender for Cloud"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/sentinel/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/microsoft-sentinel/", "data_role": "security", "architectural_tier": "security"},
-        {"name": "Azure Active Directory", "category": "Security", "cost_tier": "variable", "use_cases": ["identity", "authentication", "authorization"], "integrates_with": ["All Azure Services", "Office 365", "Third-party apps"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/active-directory/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/active-directory/", "data_role": "security", "architectural_tier": "security"},
-        {"name": "Azure Firewall", "category": "Security", "cost_tier": "medium", "use_cases": ["network_firewall", "traffic_filtering", "security"], "integrates_with": ["Virtual Network", "Azure Monitor", "Sentinel"], "compliance": ["SOC", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/firewall/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-firewall/", "data_role": "security", "architectural_tier": "security"},
-        {"name": "Azure DDoS Protection", "category": "Security", "cost_tier": "medium", "use_cases": ["ddos_protection", "network_security", "availability"], "integrates_with": ["Virtual Network", "Application Gateway", "Azure Monitor"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/ddos-protection/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/ddos-protection/", "data_role": "security", "architectural_tier": "security"},
-        
-        # Web & Mobile - Complete web platform
-        {"name": "Azure App Service", "category": "Web", "cost_tier": "medium", "use_cases": ["web_apps", "api", "mobile_backend"], "integrates_with": ["Azure SQL Database", "Key Vault", "Application Insights"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/app-service/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-service/", "data_role": "application", "architectural_tier": "application"},
-        {"name": "Azure Static Web Apps", "category": "Web", "cost_tier": "low", "use_cases": ["static_sites", "jamstack", "frontend"], "integrates_with": ["GitHub", "Azure DevOps", "Azure Functions"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/static-web-apps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-service/static/", "data_role": "application", "architectural_tier": "application"},
-        {"name": "Azure CDN", "category": "Web", "cost_tier": "low", "use_cases": ["content_delivery", "performance", "global_distribution"], "integrates_with": ["Blob Storage", "App Service", "Front Door"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/cdn/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/cdn/", "data_role": "infrastructure", "architectural_tier": "network"},
-        
-        # Integration - Complete integration platform
-        {"name": "Azure Logic Apps", "category": "Integration", "cost_tier": "low", "use_cases": ["workflow", "integration", "automation"], "integrates_with": ["Office 365", "Dynamics 365", "SAP"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/logic-apps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/logic-apps/", "data_role": "integration", "architectural_tier": "integration"},
-        {"name": "Azure Event Grid", "category": "Integration", "cost_tier": "low", "use_cases": ["event_routing", "reactive_programming", "serverless"], "integrates_with": ["Azure Functions", "Logic Apps", "Event Hubs"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/event-grid/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-grid/", "data_role": "integration", "architectural_tier": "integration"},
-        {"name": "Azure Service Bus", "category": "Integration", "cost_tier": "low", "use_cases": ["messaging", "queues", "pub_sub"], "integrates_with": ["Azure Functions", "Logic Apps", "Service Fabric"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/service-bus-messaging/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/service-bus/", "data_role": "integration", "architectural_tier": "integration"},
-        {"name": "Azure API Management", "category": "Integration", "cost_tier": "medium", "use_cases": ["api_gateway", "api_management", "developer_portal"], "integrates_with": ["App Service", "Azure Functions", "Logic Apps"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/api-management/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/api-management/", "data_role": "integration", "architectural_tier": "integration"},
-        {"name": "Azure Event Hubs", "category": "Integration", "cost_tier": "medium", "use_cases": ["big_data_streaming", "telemetry", "event_ingestion"], "integrates_with": ["Stream Analytics", "Azure Functions", "Databricks"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/event-hubs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/", "data_role": "ingestion", "architectural_tier": "integration"},
-        
-        # IoT - Complete IoT platform
-        {"name": "Azure IoT Hub", "category": "IoT", "cost_tier": "medium", "use_cases": ["iot_connectivity", "device_management", "telemetry"], "integrates_with": ["Stream Analytics", "Event Grid", "Time Series Insights"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/iot-hub/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-hub/", "data_role": "ingestion", "architectural_tier": "application"},
-        {"name": "Azure IoT Central", "category": "IoT", "cost_tier": "low", "use_cases": ["iot_saas", "device_templates", "no_code_iot"], "integrates_with": ["Power BI", "Logic Apps", "Event Grid"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/iot-central/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/iot-central/", "data_role": "application", "architectural_tier": "application"},
-        {"name": "Azure Digital Twins", "category": "IoT", "cost_tier": "medium", "use_cases": ["digital_twins", "iot_modeling", "spatial_intelligence"], "integrates_with": ["IoT Hub", "Time Series Insights", "Azure Maps"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/digital-twins/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/digital-twins/", "data_role": "processing", "architectural_tier": "application"},
-        {"name": "Azure Time Series Insights", "category": "IoT", "cost_tier": "medium", "use_cases": ["time_series", "iot_analytics", "operational_intelligence"], "integrates_with": ["IoT Hub", "Event Hubs", "Power BI"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/time-series-insights/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/time-series-insights/", "data_role": "processing", "architectural_tier": "analytics"},
-        
-        # DevOps - Complete DevOps platform
-        {"name": "Azure DevOps", "category": "DevOps", "cost_tier": "low", "use_cases": ["ci_cd", "project_management", "source_control"], "integrates_with": ["GitHub", "Azure Container Registry", "AKS"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/devops/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/", "data_role": "management", "architectural_tier": "management"},
-        {"name": "GitHub Actions", "category": "DevOps", "cost_tier": "low", "use_cases": ["ci_cd", "automation", "workflows"], "integrates_with": ["Azure Container Registry", "AKS", "App Service"], "compliance": ["SOC", "ISO"], "docs": "https://docs.github.com/en/actions", "pricing": "https://github.com/pricing", "data_role": "management", "architectural_tier": "management"},
-        {"name": "Azure Artifacts", "category": "DevOps", "cost_tier": "low", "use_cases": ["package_management", "npm", "nuget", "maven"], "integrates_with": ["Azure DevOps", "Visual Studio", "Azure Pipelines"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/devops/artifacts/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/", "data_role": "management", "architectural_tier": "management"},
-        
-        # Monitoring - Complete observability platform
-        {"name": "Azure Monitor", "category": "Monitoring", "cost_tier": "medium", "use_cases": ["monitoring", "logging", "metrics"], "integrates_with": ["All Azure Services", "Application Insights", "Log Analytics"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/", "data_role": "monitoring", "architectural_tier": "management"},
-        {"name": "Application Insights", "category": "Monitoring", "cost_tier": "low", "use_cases": ["apm", "performance_monitoring", "diagnostics"], "integrates_with": ["App Service", "Azure Functions", "AKS"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/", "data_role": "monitoring", "architectural_tier": "management"},
-        {"name": "Azure Log Analytics", "category": "Monitoring", "cost_tier": "medium", "use_cases": ["log_analysis", "queries", "dashboards"], "integrates_with": ["Azure Monitor", "Sentinel", "Defender for Cloud"], "compliance": ["SOC", "HIPAA", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/azure-monitor/logs/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/", "data_role": "monitoring", "architectural_tier": "management"},
-        
-        # Management - Complete governance platform
-        {"name": "Azure Resource Manager", "category": "Management", "cost_tier": "free", "use_cases": ["resource_management", "templates", "deployment"], "integrates_with": ["All Azure Services", "Azure DevOps", "Terraform"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/azure-resource-manager/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/resource-manager/", "data_role": "management", "architectural_tier": "management"},
-        {"name": "Azure Policy", "category": "Management", "cost_tier": "free", "use_cases": ["governance", "compliance", "resource_policies"], "integrates_with": ["Azure Monitor", "Resource Manager", "Blueprints"], "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"], "docs": "https://learn.microsoft.com/en-us/azure/governance/policy/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-policy/", "data_role": "governance", "architectural_tier": "management"},
-        {"name": "Azure Automation", "category": "Management", "cost_tier": "low", "use_cases": ["automation", "configuration_management", "update_management"], "integrates_with": ["Azure Monitor", "Log Analytics", "Virtual Machines"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/automation/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/automation/", "data_role": "management", "architectural_tier": "management"},
+        # ============ ANALYTICS & BUSINESS INTELLIGENCE ============
+        {
+            "name": "Azure Synapse Analytics",
+            "category": "Analytics & BI",
+            "subcategory": "Data Warehousing",
+            "cost_tier": "high",
+            "use_cases": ["data_warehouse", "analytics", "big_data", "etl", "reporting"],
+            "integrates_with": ["Power BI", "Azure Data Lake", "Azure ML", "Data Factory"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Enterprise data warehouse that unites data integration, warehousing, and analytics",
+            "data_role": "Central analytics hub for processing and analyzing large datasets",
+            "architectural_importance": "critical",
+            "pricing_model": "Pay-per-use + Reserved capacity",
+            "docs": "https://learn.microsoft.com/azure/synapse-analytics/",
+            "pricing": "https://azure.microsoft.com/pricing/details/synapse-analytics/"
+        },
+        {
+            "name": "Power BI",
+            "category": "Analytics & BI",
+            "subcategory": "Visualization",
+            "cost_tier": "medium",
+            "use_cases": ["visualization", "dashboards", "reporting", "business_intelligence"],
+            "integrates_with": ["Synapse", "Data Factory", "Office 365", "Dynamics"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Business analytics platform for creating interactive dashboards and reports",
+            "data_role": "Visualizes insights from data sources and presents to stakeholders",
+            "architectural_importance": "high",
+            "pricing_model": "Per-user subscription",
+            "docs": "https://learn.microsoft.com/power-bi/",
+            "pricing": "https://powerbi.microsoft.com/pricing/"
+        },
+        {
+            "name": "Azure Data Factory",
+            "category": "Analytics & BI",
+            "subcategory": "Data Integration",
+            "cost_tier": "medium",
+            "use_cases": ["etl", "data_integration", "pipeline", "orchestration"],
+            "integrates_with": ["Synapse", "Data Lake", "SQL Database", "Cosmos DB"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "Cloud-based data integration service for creating ETL/ELT pipelines",
+            "data_role": "Orchestrates data movement and transformation between sources",
+            "architectural_importance": "high",
+            "pricing_model": "Pay-per-execution",
+            "docs": "https://learn.microsoft.com/azure/data-factory/",
+            "pricing": "https://azure.microsoft.com/pricing/details/data-factory/"
+        },
+        {
+            "name": "Azure Databricks",
+            "category": "Analytics & BI",
+            "subcategory": "Advanced Analytics",
+            "cost_tier": "high",
+            "use_cases": ["machine_learning", "big_data", "spark", "analytics"],
+            "integrates_with": ["Azure ML", "Data Lake", "Synapse", "Power BI"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "Apache Spark-based analytics platform for big data and machine learning",
+            "data_role": "Processes large datasets and builds ML models collaboratively",
+            "architectural_importance": "high",
+            "pricing_model": "Compute + DBU charges",
+            "docs": "https://learn.microsoft.com/azure/databricks/",
+            "pricing": "https://azure.microsoft.com/pricing/details/databricks/"
+        },
+        {
+            "name": "Azure Stream Analytics",
+            "category": "Analytics & BI",
+            "subcategory": "Real-time Analytics",
+            "cost_tier": "medium",
+            "use_cases": ["real_time", "streaming", "iot", "event_processing"],
+            "integrates_with": ["Event Hubs", "IoT Hub", "Power BI", "Functions"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Real-time analytics service for streaming data",
+            "data_role": "Processes streaming data in real-time for immediate insights",
+            "architectural_importance": "medium",
+            "pricing_model": "Streaming Units per hour",
+            "docs": "https://learn.microsoft.com/azure/stream-analytics/",
+            "pricing": "https://azure.microsoft.com/pricing/details/stream-analytics/"
+        },
+        {
+            "name": "Microsoft Fabric",
+            "category": "Analytics & BI",
+            "subcategory": "Unified Analytics",
+            "cost_tier": "high",
+            "use_cases": ["unified_analytics", "data_lakehouse", "governance", "collaboration"],
+            "integrates_with": ["Power BI", "Synapse", "Data Factory", "Purview"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "All-in-one analytics solution that covers everything from data movement to data science",
+            "data_role": "Unified platform for end-to-end analytics and data science workflows",
+            "architectural_importance": "critical",
+            "pricing_model": "Capacity-based",
+            "docs": "https://learn.microsoft.com/fabric/",
+            "pricing": "https://azure.microsoft.com/pricing/details/microsoft-fabric/"
+        },
 
-        # Additional industry-specific services
-        {"name": "Azure API for FHIR", "category": "Healthcare", "cost_tier": "medium", "use_cases": ["healthcare", "fhir", "medical_data"], "integrates_with": ["Azure Active Directory", "Azure Monitor", "Power BI"], "compliance": ["HIPAA", "SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/healthcare-apis/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-api-for-fhir/", "data_role": "application", "architectural_tier": "application"},
-        {"name": "Azure Maps", "category": "Location Services", "cost_tier": "low", "use_cases": ["mapping", "geospatial", "location"], "integrates_with": ["Power BI", "Logic Apps", "Azure Functions"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/azure-maps/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-maps/", "data_role": "application", "architectural_tier": "application"},
-        {"name": "Azure Communication Services", "category": "Communication", "cost_tier": "low", "use_cases": ["chat", "voice", "video", "sms"], "integrates_with": ["Azure Functions", "Logic Apps", "Bot Service"], "compliance": ["SOC", "ISO"], "docs": "https://learn.microsoft.com/en-us/azure/communication-services/", "pricing": "https://azure.microsoft.com/en-us/pricing/details/communication-services/", "data_role": "application", "architectural_tier": "application"},
+        # ============ ARTIFICIAL INTELLIGENCE & MACHINE LEARNING ============
+        {
+            "name": "Azure OpenAI Service",
+            "category": "AI & Machine Learning",
+            "subcategory": "Generative AI",
+            "cost_tier": "high",
+            "use_cases": ["generative_ai", "chatbot", "content_generation", "language_models"],
+            "integrates_with": ["Cognitive Services", "Bot Service", "Functions", "Logic Apps"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Access to OpenAI's powerful language models including GPT-4",
+            "data_role": "Generates content, answers questions, and processes natural language",
+            "architectural_importance": "high",
+            "pricing_model": "Token-based usage",
+            "docs": "https://learn.microsoft.com/azure/ai-services/openai/",
+            "pricing": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/"
+        },
+        {
+            "name": "Azure Machine Learning",
+            "category": "AI & Machine Learning",
+            "subcategory": "ML Platform",
+            "cost_tier": "high",
+            "use_cases": ["machine_learning", "model_training", "mlops", "deployment"],
+            "integrates_with": ["Databricks", "Synapse", "Container Registry", "Functions"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "End-to-end machine learning lifecycle management platform",
+            "data_role": "Trains, deploys, and manages machine learning models at scale",
+            "architectural_importance": "high",
+            "pricing_model": "Compute + Storage",
+            "docs": "https://learn.microsoft.com/azure/machine-learning/",
+            "pricing": "https://azure.microsoft.com/pricing/details/machine-learning/"
+        },
+        {
+            "name": "Azure Cognitive Services",
+            "category": "AI & Machine Learning",
+            "subcategory": "Pre-built AI",
+            "cost_tier": "medium",
+            "use_cases": ["computer_vision", "speech", "language", "decision_apis"],
+            "integrates_with": ["Bot Service", "Functions", "Logic Apps", "Power Platform"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Pre-built AI services for vision, speech, language, and decision making",
+            "data_role": "Adds AI capabilities to applications without custom model development",
+            "architectural_importance": "medium",
+            "pricing_model": "Transaction-based",
+            "docs": "https://learn.microsoft.com/azure/cognitive-services/",
+            "pricing": "https://azure.microsoft.com/pricing/details/cognitive-services/"
+        },
+        {
+            "name": "Azure Bot Service",
+            "category": "AI & Machine Learning",
+            "subcategory": "Conversational AI",
+            "cost_tier": "low",
+            "use_cases": ["chatbot", "virtual_assistant", "customer_service"],
+            "integrates_with": ["OpenAI", "Cognitive Services", "Teams", "QnA Maker"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Platform for building intelligent, enterprise-grade bots",
+            "data_role": "Handles conversational interactions and routes to appropriate services",
+            "architectural_importance": "medium",
+            "pricing_model": "Message-based",
+            "docs": "https://learn.microsoft.com/azure/bot-service/",
+            "pricing": "https://azure.microsoft.com/pricing/details/bot-service/"
+        },
+
+        # ============ COMPUTE SERVICES ============
+        {
+            "name": "Azure Virtual Machines",
+            "category": "Compute",
+            "subcategory": "IaaS",
+            "cost_tier": "variable",
+            "use_cases": ["legacy_apps", "custom_software", "lift_shift", "windows", "linux"],
+            "integrates_with": ["Virtual Network", "Load Balancer", "Monitor", "Backup"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "On-demand, scalable computing resources with full OS control",
+            "data_role": "Hosts applications and services requiring specific OS configurations",
+            "architectural_importance": "medium",
+            "pricing_model": "Hourly compute + Storage",
+            "docs": "https://learn.microsoft.com/azure/virtual-machines/",
+            "pricing": "https://azure.microsoft.com/pricing/details/virtual-machines/"
+        },
+        {
+            "name": "Azure Functions",
+            "category": "Compute",
+            "subcategory": "Serverless",
+            "cost_tier": "low",
+            "use_cases": ["serverless", "event_driven", "microservices", "triggers"],
+            "integrates_with": ["Logic Apps", "Event Grid", "Cosmos DB", "Storage"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Event-driven serverless compute platform",
+            "data_role": "Executes code in response to events without managing infrastructure",
+            "architectural_importance": "high",
+            "pricing_model": "Consumption-based",
+            "docs": "https://learn.microsoft.com/azure/azure-functions/",
+            "pricing": "https://azure.microsoft.com/pricing/details/functions/"
+        },
+        {
+            "name": "Azure App Service",
+            "category": "Compute",
+            "subcategory": "PaaS Web",
+            "cost_tier": "medium",
+            "use_cases": ["web_apps", "api", "mobile_backend", "rest_services"],
+            "integrates_with": ["SQL Database", "Key Vault", "Application Insights", "CDN"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Fully managed platform for building web apps and APIs",
+            "data_role": "Hosts web applications and APIs with automatic scaling",
+            "architectural_importance": "high",
+            "pricing_model": "App Service Plan",
+            "docs": "https://learn.microsoft.com/azure/app-service/",
+            "pricing": "https://azure.microsoft.com/pricing/details/app-service/"
+        },
+        {
+            "name": "Azure Logic Apps",
+            "category": "Compute",
+            "subcategory": "Workflow Automation",
+            "cost_tier": "low",
+            "use_cases": ["workflow", "integration", "automation", "business_process"],
+            "integrates_with": ["Office 365", "Dynamics", "SAP", "Salesforce"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "Cloud-based platform for creating automated workflows",
+            "data_role": "Orchestrates business processes and integrates systems",
+            "architectural_importance": "medium",
+            "pricing_model": "Per workflow execution",
+            "docs": "https://learn.microsoft.com/azure/logic-apps/",
+            "pricing": "https://azure.microsoft.com/pricing/details/logic-apps/"
+        },
+
+        # ============ CONTAINERS & KUBERNETES ============
+        {
+            "name": "Azure Kubernetes Service (AKS)",
+            "category": "Containers",
+            "subcategory": "Orchestration",
+            "cost_tier": "medium",
+            "use_cases": ["kubernetes", "microservices", "container_orchestration", "devops"],
+            "integrates_with": ["Container Registry", "Monitor", "Active Directory", "Key Vault"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Managed Kubernetes service for deploying containerized applications",
+            "data_role": "Orchestrates containerized applications with high availability",
+            "architectural_importance": "high",
+            "pricing_model": "Node pool compute costs",
+            "docs": "https://learn.microsoft.com/azure/aks/",
+            "pricing": "https://azure.microsoft.com/pricing/details/kubernetes-service/"
+        },
+        {
+            "name": "Azure Container Apps",
+            "category": "Containers",
+            "subcategory": "Serverless Containers",
+            "cost_tier": "low",
+            "use_cases": ["serverless_containers", "microservices", "event_driven", "api"],
+            "integrates_with": ["Event Grid", "Service Bus", "Monitor", "Key Vault"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Serverless containers with built-in best practices",
+            "data_role": "Runs containerized apps without managing infrastructure",
+            "architectural_importance": "medium",
+            "pricing_model": "vCPU and memory consumption",
+            "docs": "https://learn.microsoft.com/azure/container-apps/",
+            "pricing": "https://azure.microsoft.com/pricing/details/container-apps/"
+        },
+        {
+            "name": "Azure Container Registry",
+            "category": "Containers",
+            "subcategory": "Registry",
+            "cost_tier": "low",
+            "use_cases": ["container_images", "docker_registry", "devops", "cicd"],
+            "integrates_with": ["AKS", "Container Apps", "DevOps", "GitHub Actions"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Private Docker registry service for managing container images",
+            "data_role": "Stores and manages container images securely",
+            "architectural_importance": "medium",
+            "pricing_model": "Storage + operations",
+            "docs": "https://learn.microsoft.com/azure/container-registry/",
+            "pricing": "https://azure.microsoft.com/pricing/details/container-registry/"
+        },
+
+        # ============ DATABASES & DATA STORAGE ============
+        {
+            "name": "Azure SQL Database",
+            "category": "Databases",
+            "subcategory": "Relational",
+            "cost_tier": "medium",
+            "use_cases": ["relational_database", "sql_server", "oltp", "applications"],
+            "integrates_with": ["Power BI", "Data Factory", "Functions", "App Service"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Fully managed relational database with AI-powered features",
+            "data_role": "Stores structured data with ACID compliance and relationships",
+            "architectural_importance": "high",
+            "pricing_model": "DTU or vCore-based",
+            "docs": "https://learn.microsoft.com/azure/azure-sql/database/",
+            "pricing": "https://azure.microsoft.com/pricing/details/azure-sql-database/"
+        },
+        {
+            "name": "Azure Cosmos DB",
+            "category": "Databases",
+            "subcategory": "NoSQL",
+            "cost_tier": "medium",
+            "use_cases": ["nosql", "global_distribution", "multi_model", "real_time"],
+            "integrates_with": ["Functions", "Synapse", "Power BI", "Search"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Globally distributed, multi-model NoSQL database",
+            "data_role": "Stores unstructured data with global distribution and consistency",
+            "architectural_importance": "high",
+            "pricing_model": "Request Units + Storage",
+            "docs": "https://learn.microsoft.com/azure/cosmos-db/",
+            "pricing": "https://azure.microsoft.com/pricing/details/cosmos-db/"
+        },
+        {
+            "name": "Azure Cache for Redis",
+            "category": "Databases",
+            "subcategory": "Caching",
+            "cost_tier": "low",
+            "use_cases": ["caching", "session_storage", "real_time", "performance"],
+            "integrates_with": ["App Service", "Functions", "AKS", "Virtual Machines"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Fully managed in-memory data store based on Redis",
+            "data_role": "Improves application performance through high-speed caching",
+            "architectural_importance": "medium",
+            "pricing_model": "Cache size tiers",
+            "docs": "https://learn.microsoft.com/azure/azure-cache-for-redis/",
+            "pricing": "https://azure.microsoft.com/pricing/details/cache/"
+        },
+
+        # ============ STORAGE SERVICES ============
+        {
+            "name": "Azure Blob Storage",
+            "category": "Storage",
+            "subcategory": "Object Storage",
+            "cost_tier": "low",
+            "use_cases": ["object_storage", "backup", "archival", "media", "data_lake"],
+            "integrates_with": ["CDN", "Data Factory", "Synapse", "Functions"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Massively scalable object storage for unstructured data",
+            "data_role": "Stores files, documents, media, and backup data",
+            "architectural_importance": "high",
+            "pricing_model": "Storage + transactions",
+            "docs": "https://learn.microsoft.com/azure/storage/blobs/",
+            "pricing": "https://azure.microsoft.com/pricing/details/storage/blobs/"
+        },
+        {
+            "name": "Azure Data Lake Storage",
+            "category": "Storage",
+            "subcategory": "Data Lake",
+            "cost_tier": "medium",
+            "use_cases": ["big_data", "analytics", "data_lake", "hierarchical"],
+            "integrates_with": ["Synapse", "Databricks", "Data Factory", "Power BI"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Scalable data lake storage for big data analytics",
+            "data_role": "Central repository for structured and unstructured analytics data",
+            "architectural_importance": "high",
+            "pricing_model": "Storage + transactions",
+            "docs": "https://learn.microsoft.com/azure/storage/blobs/data-lake-storage-introduction/",
+            "pricing": "https://azure.microsoft.com/pricing/details/storage/data-lake/"
+        },
+
+        # ============ NETWORKING & CONTENT DELIVERY ============
+        {
+            "name": "Azure Virtual Network",
+            "category": "Networking",
+            "subcategory": "Core Networking",
+            "cost_tier": "low",
+            "use_cases": ["network_isolation", "hybrid_connectivity", "security", "subnets"],
+            "integrates_with": ["Virtual Machines", "AKS", "Application Gateway", "Firewall"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Private network in Azure for connecting resources securely",
+            "data_role": "Provides network isolation and secure communication paths",
+            "architectural_importance": "critical",
+            "pricing_model": "VPN Gateway + bandwidth",
+            "docs": "https://learn.microsoft.com/azure/virtual-network/",
+            "pricing": "https://azure.microsoft.com/pricing/details/virtual-network/"
+        },
+        {
+            "name": "Azure Application Gateway",
+            "category": "Networking",
+            "subcategory": "Load Balancer",
+            "cost_tier": "medium",
+            "use_cases": ["load_balancer", "ssl_termination", "waf", "routing"],
+            "integrates_with": ["Virtual Network", "AKS", "App Service", "Key Vault"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Web traffic load balancer with application-level routing",
+            "data_role": "Routes and load balances HTTP/HTTPS traffic to applications",
+            "architectural_importance": "high",
+            "pricing_model": "Gateway hours + data processing",
+            "docs": "https://learn.microsoft.com/azure/application-gateway/",
+            "pricing": "https://azure.microsoft.com/pricing/details/application-gateway/"
+        },
+        {
+            "name": "Azure Front Door",
+            "category": "Networking",
+            "subcategory": "Global Load Balancer",
+            "cost_tier": "medium",
+            "use_cases": ["global_load_balancer", "cdn", "waf", "acceleration"],
+            "integrates_with": ["App Service", "Application Gateway", "Storage", "Functions"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Global load balancer and CDN service",
+            "data_role": "Delivers content globally with edge optimization",
+            "architectural_importance": "medium",
+            "pricing_model": "Routing rules + data transfer",
+            "docs": "https://learn.microsoft.com/azure/frontdoor/",
+            "pricing": "https://azure.microsoft.com/pricing/details/frontdoor/"
+        },
+
+        # ============ SECURITY & IDENTITY ============
+        {
+            "name": "Azure Active Directory",
+            "category": "Security & Identity",
+            "subcategory": "Identity Platform",
+            "cost_tier": "variable",
+            "use_cases": ["identity", "authentication", "authorization", "sso"],
+            "integrates_with": ["All Azure Services", "Office 365", "Third-party SaaS"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Cloud-based identity and access management service",
+            "data_role": "Manages user identities and access across all services",
+            "architectural_importance": "critical",
+            "pricing_model": "Per-user/per-month",
+            "docs": "https://learn.microsoft.com/azure/active-directory/",
+            "pricing": "https://azure.microsoft.com/pricing/details/active-directory/"
+        },
+        {
+            "name": "Azure Key Vault",
+            "category": "Security & Identity",
+            "subcategory": "Secrets Management",
+            "cost_tier": "low",
+            "use_cases": ["secrets", "keys", "certificates", "encryption"],
+            "integrates_with": ["App Service", "Functions", "AKS", "Virtual Machines"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Secure storage for secrets, keys, and certificates",
+            "data_role": "Protects and manages cryptographic keys and secrets",
+            "architectural_importance": "critical",
+            "pricing_model": "Operations-based",
+            "docs": "https://learn.microsoft.com/azure/key-vault/",
+            "pricing": "https://azure.microsoft.com/pricing/details/key-vault/"
+        },
+        {
+            "name": "Microsoft Defender for Cloud",
+            "category": "Security & Identity",
+            "subcategory": "Security Posture",
+            "cost_tier": "medium",
+            "use_cases": ["security_monitoring", "threat_detection", "compliance", "cspm"],
+            "integrates_with": ["Monitor", "Sentinel", "Logic Apps", "Security Center"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Unified security management and advanced threat protection",
+            "data_role": "Monitors and protects cloud resources from threats",
+            "architectural_importance": "high",
+            "pricing_model": "Per-resource pricing",
+            "docs": "https://learn.microsoft.com/azure/defender-for-cloud/",
+            "pricing": "https://azure.microsoft.com/pricing/details/defender-for-cloud/"
+        },
+
+        # ============ MONITORING & MANAGEMENT ============
+        {
+            "name": "Azure Monitor",
+            "category": "Monitoring & Management",
+            "subcategory": "Observability",
+            "cost_tier": "medium",
+            "use_cases": ["monitoring", "logging", "metrics", "alerting", "diagnostics"],
+            "integrates_with": ["All Azure Services", "Application Insights", "Log Analytics"],
+            "compliance": ["SOC", "HIPAA", "ISO", "FedRAMP"],
+            "description": "Full-stack monitoring service for applications and infrastructure",
+            "data_role": "Collects, analyzes, and acts on telemetry from all environments",
+            "architectural_importance": "critical",
+            "pricing_model": "Data ingestion + retention",
+            "docs": "https://learn.microsoft.com/azure/azure-monitor/",
+            "pricing": "https://azure.microsoft.com/pricing/details/monitor/"
+        },
+        {
+            "name": "Application Insights",
+            "category": "Monitoring & Management",
+            "subcategory": "APM",
+            "cost_tier": "low",
+            "use_cases": ["apm", "performance", "diagnostics", "user_analytics"],
+            "integrates_with": ["App Service", "Functions", "AKS", "Monitor"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Application performance monitoring and analytics service",
+            "data_role": "Tracks application performance and user behavior",
+            "architectural_importance": "high",
+            "pricing_model": "Data volume-based",
+            "docs": "https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview/",
+            "pricing": "https://azure.microsoft.com/pricing/details/monitor/"
+        },
+
+        # ============ IOT & EDGE ============
+        {
+            "name": "Azure IoT Hub",
+            "category": "IoT & Edge",
+            "subcategory": "IoT Platform",
+            "cost_tier": "medium",
+            "use_cases": ["iot_connectivity", "device_management", "telemetry", "commands"],
+            "integrates_with": ["Stream Analytics", "Functions", "Digital Twins", "Monitor"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "Managed service for bi-directional communication with IoT devices",
+            "data_role": "Collects telemetry and manages IoT devices at scale",
+            "architectural_importance": "high",
+            "pricing_model": "Messages per day",
+            "docs": "https://learn.microsoft.com/azure/iot-hub/",
+            "pricing": "https://azure.microsoft.com/pricing/details/iot-hub/"
+        },
+        {
+            "name": "Azure Digital Twins",
+            "category": "IoT & Edge",
+            "subcategory": "Digital Modeling",
+            "cost_tier": "medium",
+            "use_cases": ["digital_twins", "iot_modeling", "spatial_intelligence", "simulation"],
+            "integrates_with": ["IoT Hub", "Time Series Insights", "Maps", "Functions"],
+            "compliance": ["SOC", "ISO"],
+            "description": "IoT service for creating digital representations of real-world environments",
+            "data_role": "Models and simulates real-world IoT environments",
+            "architectural_importance": "medium",
+            "pricing_model": "API operations + queries",
+            "docs": "https://learn.microsoft.com/azure/digital-twins/",
+            "pricing": "https://azure.microsoft.com/pricing/details/digital-twins/"
+        },
+
+        # ============ DEVOPS & DEVELOPER TOOLS ============
+        {
+            "name": "Azure DevOps",
+            "category": "DevOps & Developer Tools",
+            "subcategory": "DevOps Platform",
+            "cost_tier": "low",
+            "use_cases": ["cicd", "project_management", "source_control", "testing"],
+            "integrates_with": ["GitHub", "Container Registry", "AKS", "Monitor"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Complete DevOps toolchain for planning, developing, and deploying",
+            "data_role": "Manages code, builds, tests, and deployment pipelines",
+            "architectural_importance": "medium",
+            "pricing_model": "Per-user basic/premium",
+            "docs": "https://learn.microsoft.com/azure/devops/",
+            "pricing": "https://azure.microsoft.com/pricing/details/devops/azure-devops-services/"
+        },
+        {
+            "name": "GitHub Actions",
+            "category": "DevOps & Developer Tools",
+            "subcategory": "CI/CD",
+            "cost_tier": "low",
+            "use_cases": ["cicd", "automation", "workflows", "testing"],
+            "integrates_with": ["Container Registry", "AKS", "App Service", "Functions"],
+            "compliance": ["SOC", "ISO"],
+            "description": "CI/CD platform integrated with GitHub repositories",
+            "data_role": "Automates software workflows from code to deployment",
+            "architectural_importance": "medium",
+            "pricing_model": "Minutes + storage",
+            "docs": "https://docs.github.com/actions",
+            "pricing": "https://github.com/pricing"
+        },
+
+        # ============ INTEGRATION & MESSAGING ============
+        {
+            "name": "Azure Service Bus",
+            "category": "Integration & Messaging",
+            "subcategory": "Enterprise Messaging",
+            "cost_tier": "low",
+            "use_cases": ["messaging", "queues", "topics", "enterprise_integration"],
+            "integrates_with": ["Functions", "Logic Apps", "Event Grid", "AKS"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "Reliable cloud messaging as a service platform",
+            "data_role": "Enables reliable communication between distributed applications",
+            "architectural_importance": "medium",
+            "pricing_model": "Messages + connections",
+            "docs": "https://learn.microsoft.com/azure/service-bus-messaging/",
+            "pricing": "https://azure.microsoft.com/pricing/details/service-bus/"
+        },
+        {
+            "name": "Azure Event Grid",
+            "category": "Integration & Messaging",
+            "subcategory": "Event Routing",
+            "cost_tier": "low",
+            "use_cases": ["event_routing", "reactive_programming", "serverless", "automation"],
+            "integrates_with": ["Functions", "Logic Apps", "Storage", "Cosmos DB"],
+            "compliance": ["SOC", "ISO"],
+            "description": "Fully managed event routing service for reactive programming",
+            "data_role": "Routes events from any source to any destination at scale",
+            "architectural_importance": "medium",
+            "pricing_model": "Operations-based",
+            "docs": "https://learn.microsoft.com/azure/event-grid/",
+            "pricing": "https://azure.microsoft.com/pricing/details/event-grid/"
+        },
+        {
+            "name": "Azure API Management",
+            "category": "Integration & Messaging",
+            "subcategory": "API Gateway",
+            "cost_tier": "medium",
+            "use_cases": ["api_gateway", "api_management", "developer_portal", "policies"],
+            "integrates_with": ["App Service", "Functions", "Logic Apps", "Active Directory"],
+            "compliance": ["SOC", "HIPAA", "ISO"],
+            "description": "Hybrid, multicloud management platform for APIs",
+            "data_role": "Manages, secures, and analyzes APIs across environments",
+            "architectural_importance": "high",
+            "pricing_model": "Gateway units + calls",
+            "docs": "https://learn.microsoft.com/azure/api-management/",
+            "pricing": "https://azure.microsoft.com/pricing/details/api-management/"
+        }
     ]
 
-# Enhanced Architecture Patterns with data flow awareness
-ENHANCED_ARCHITECTURE_PATTERNS = {
+# Enhanced Architecture Patterns with Complete Solutions
+COMPREHENSIVE_PATTERNS = {
     "modern_data_platform": {
-        "name": "Modern Data Platform",
-        "required": ["Azure Data Factory", "Azure Data Lake Storage", "Azure Synapse Analytics"],
-        "recommended": ["Power BI", "Azure Machine Learning", "Microsoft Purview", "Azure Monitor"],
-        "optional": ["Azure Databricks", "Azure Stream Analytics", "Azure Key Vault"],
-        "description": "Complete modern data platform for analytics, ML, and business intelligence with data governance",
-        "use_cases": ["data_warehouse", "analytics", "business_intelligence", "machine_learning"],
-        "data_flow": "Data Factory → Data Lake → Synapse → Power BI",
-        "tier_priority": {"integration": 9, "data": 9, "analytics": 10, "presentation": 8, "management": 7}
+        "name": "Modern Data & Analytics Platform",
+        "description": "Complete modern data platform for analytics, ML, and business intelligence with unified governance",
+        "required_services": ["Azure Data Factory", "Azure Data Lake Storage", "Azure Synapse Analytics", "Power BI"],
+        "recommended_services": ["Microsoft Fabric", "Azure Machine Learning", "Microsoft Purview", "Azure Monitor"],
+        "optional_services": ["Azure Databricks", "Azure Stream Analytics", "Azure Cognitive Services"],
+        "use_cases": ["data_warehouse", "analytics", "business_intelligence", "machine_learning", "reporting"],
+        "industries": ["financial", "healthcare", "retail", "manufacturing"],
+        "complexity": "high",
+        "estimated_timeline": "3-6 months"
     },
-    "serverless_web_app": {
-        "name": "Serverless Web Application",
-        "required": ["Azure Functions", "Azure Cosmos DB", "Azure Static Web Apps"],
-        "recommended": ["Azure CDN", "Application Insights", "Key Vault", "API Management"],
-        "optional": ["Azure Active Directory", "Azure Cache for Redis"],
-        "description": "Scalable serverless web application with global distribution and monitoring",
-        "use_cases": ["web_app", "api", "serverless", "global_distribution"],
-        "data_flow": "Static Web Apps → API Management → Functions → Cosmos DB",
-        "tier_priority": {"application": 10, "compute": 9, "data": 8, "network": 7, "security": 8}
+    "intelligent_app_platform": {
+        "name": "AI-Powered Application Platform",
+        "description": "Modern application platform with integrated AI capabilities and intelligent automation",
+        "required_services": ["Azure App Service", "Azure OpenAI Service", "Azure Cognitive Services", "Azure SQL Database"],
+        "recommended_services": ["Azure Functions", "Azure API Management", "Application Insights", "Azure Key Vault"],
+        "optional_services": ["Azure Bot Service", "Azure Search", "Azure Cache for Redis"],
+        "use_cases": ["intelligent_apps", "chatbot", "automation", "ai_integration"],
+        "industries": ["technology", "healthcare", "financial", "retail"],
+        "complexity": "medium",
+        "estimated_timeline": "2-4 months"
     },
-    "microservices_platform": {
-        "name": "Microservices Platform",
-        "required": ["Azure Kubernetes Service (AKS)", "Azure Container Registry", "Virtual Network"],
-        "recommended": ["Application Gateway", "Azure Monitor", "Key Vault", "Service Bus"],
-        "optional": ["Azure Cache for Redis", "Azure API Management", "Azure DevOps"],
-        "description": "Enterprise-grade microservices platform with container orchestration and service mesh",
-        "use_cases": ["microservices", "containers", "scalability", "enterprise"],
-        "data_flow": "Application Gateway → AKS → Service Bus → Databases",
-        "tier_priority": {"compute": 10, "network": 9, "integration": 8, "security": 9, "management": 8}
+    "cloud_native_microservices": {
+        "name": "Cloud-Native Microservices Platform",
+        "description": "Enterprise-grade microservices platform with container orchestration and DevOps integration",
+        "required_services": ["Azure Kubernetes Service (AKS)", "Azure Container Registry", "Azure Virtual Network", "Azure Monitor"],
+        "recommended_services": ["Azure Application Gateway", "Azure Key Vault", "Azure DevOps", "Azure Service Bus"],
+        "optional_services": ["Azure API Management", "Azure Cache for Redis", "Microsoft Defender for Cloud"],
+        "use_cases": ["microservices", "containers", "scalability", "devops", "cicd"],
+        "industries": ["technology", "financial", "retail", "gaming"],
+        "complexity": "high",
+        "estimated_timeline": "4-8 months"
     },
-    "ml_platform": {
-        "name": "Machine Learning Platform",
-        "required": ["Azure Machine Learning", "Azure Data Lake Storage", "Azure Databricks"],
-        "recommended": ["Azure Data Factory", "Azure Synapse Analytics", "Azure Container Registry", "Azure Monitor"],
-        "optional": ["Azure Cognitive Services", "Power BI", "Azure Functions"],
-        "description": "End-to-end machine learning platform for model development, training, and deployment",
-        "use_cases": ["machine_learning", "ai", "data_science", "model_deployment"],
-        "data_flow": "Data Factory → Data Lake → Databricks → Azure ML → Deployment",
-        "tier_priority": {"analytics": 10, "data": 9, "integration": 8, "compute": 8, "management": 7}
+    "serverless_event_driven": {
+        "name": "Serverless Event-Driven Architecture",
+        "description": "Scalable serverless architecture for event-driven applications with automatic scaling",
+        "required_services": ["Azure Functions", "Azure Event Grid", "Azure Cosmos DB", "Azure Storage"],
+        "recommended_services": ["Azure Logic Apps", "Azure API Management", "Application Insights", "Azure Key Vault"],
+        "optional_services": ["Azure Service Bus", "Azure Stream Analytics", "Power BI"],
+        "use_cases": ["serverless", "event_driven", "auto_scaling", "cost_optimization"],
+        "industries": ["startup", "media", "iot", "retail"],
+        "complexity": "medium",
+        "estimated_timeline": "2-3 months"
     },
-    "iot_platform": {
-        "name": "IoT Analytics Platform",
-        "required": ["Azure IoT Hub", "Azure Stream Analytics", "Azure Data Lake Storage"],
-        "recommended": ["Power BI", "Azure Functions", "Event Grid", "Azure Monitor"],
-        "optional": ["Azure Digital Twins", "Time Series Insights", "Azure Machine Learning"],
-        "description": "Comprehensive IoT platform for device management, real-time analytics, and insights",
-        "use_cases": ["iot", "real_time", "telemetry", "device_management"],
-        "data_flow": "IoT Hub → Stream Analytics → Data Lake → Power BI",
-        "tier_priority": {"application": 10, "analytics": 9, "data": 8, "integration": 8, "management": 7}
+    "iot_analytics_platform": {
+        "name": "IoT Analytics & Intelligence Platform",
+        "description": "End-to-end IoT platform for device management, real-time analytics, and predictive insights",
+        "required_services": ["Azure IoT Hub", "Azure Stream Analytics", "Azure Data Lake Storage", "Power BI"],
+        "recommended_services": ["Azure Digital Twins", "Azure Machine Learning", "Azure Functions", "Azure Monitor"],
+        "optional_services": ["Azure Time Series Insights", "Azure Maps", "Azure Cognitive Services"],
+        "use_cases": ["iot", "real_time", "telemetry", "predictive_analytics", "device_management"],
+        "industries": ["manufacturing", "energy", "transportation", "smart_cities"],
+        "complexity": "high",
+        "estimated_timeline": "4-6 months"
     },
-    "analytics_platform": {
-        "name": "Advanced Analytics Platform",
-        "required": ["Azure Synapse Analytics", "Power BI", "Azure Data Factory"],
-        "recommended": ["Azure Data Lake Storage", "Azure Databricks", "Azure Machine Learning"],
-        "optional": ["Microsoft Purview", "Azure Stream Analytics", "Azure Cognitive Services"],
-        "description": "Comprehensive analytics platform for business intelligence and advanced analytics",
-        "use_cases": ["analytics", "business_intelligence", "data_warehouse", "reporting"],
-        "data_flow": "Data Factory → Synapse → Power BI / Databricks → ML Models",
-        "tier_priority": {"analytics": 10, "data": 9, "integration": 8, "presentation": 9, "management": 7}
-    },
-    "security_first_architecture": {
-        "name": "Security-First Architecture",
-        "required": ["Azure Key Vault", "Microsoft Defender for Cloud", "Azure Active Directory"],
-        "recommended": ["Microsoft Sentinel", "Azure Firewall", "Azure Monitor", "Azure Policy"],
-        "optional": ["Azure DDoS Protection", "Azure VPN Gateway", "Azure Private Link"],
-        "description": "Security-focused architecture with comprehensive threat protection and compliance",
-        "use_cases": ["security", "compliance", "governance", "identity"],
-        "data_flow": "AAD → Key Vault → Protected Resources → Monitoring → SIEM",
-        "tier_priority": {"security": 10, "management": 9, "network": 8, "compute": 7, "data": 8}
+    "secure_enterprise_platform": {
+        "name": "Secure Enterprise Platform",
+        "description": "Enterprise-grade platform with comprehensive security, compliance, and governance",
+        "required_services": ["Azure Active Directory", "Azure Key Vault", "Microsoft Defender for Cloud", "Azure Monitor"],
+        "recommended_services": ["Azure Virtual Network", "Azure Application Gateway", "Azure Policy", "Microsoft Sentinel"],
+        "optional_services": ["Azure Firewall", "Azure Private Link", "Azure Backup"],
+        "use_cases": ["enterprise_security", "compliance", "governance", "identity_management"],
+        "industries": ["financial", "healthcare", "government", "enterprise"],
+        "complexity": "high",
+        "estimated_timeline": "3-6 months"
     }
 }
 
-# Enhanced Industry Templates with specific service requirements
-ENHANCED_INDUSTRY_TEMPLATES = {
+# Industry-Specific Requirements
+INDUSTRY_COMPLIANCE = {
     "healthcare": {
         "name": "Healthcare & Life Sciences",
-        "compliance_requirements": ["HIPAA", "HITECH", "FDA", "GDPR"],
-        "required_services": ["Azure Key Vault", "Microsoft Defender for Cloud", "Azure Monitor", "Azure API for FHIR"],
-        "recommended_services": ["Azure Confidential Computing", "Private Link", "Azure Policy", "Microsoft Purview"],
-        "data_governance": "strict",
-        "encryption": "required",
-        "specific_patterns": ["security_first_architecture", "modern_data_platform"],
-        "prohibited_services": [],
-        "scoring_boost": {"Security": 5, "Monitoring": 3, "Healthcare": 10}
+        "compliance_frameworks": ["HIPAA", "HITECH", "FDA", "GxP"],
+        "required_services": ["Azure Key Vault", "Microsoft Defender for Cloud", "Azure Monitor", "Azure Private Link"],
+        "data_residency": "required",
+        "encryption": "end_to_end",
+        "audit_logging": "comprehensive",
+        "special_considerations": ["PHI protection", "Clinical data integrity", "Regulatory compliance"]
     },
     "financial": {
         "name": "Financial Services",
-        "compliance_requirements": ["PCI DSS", "SOX", "GDPR", "Basel III"],
-        "required_services": ["Azure Key Vault", "Azure Firewall", "DDoS Protection", "Microsoft Sentinel"],
-        "recommended_services": ["Azure Confidential Computing", "Private Link", "Azure Policy", "Azure Monitor"],
-        "data_governance": "strict",
-        "encryption": "required",
-        "specific_patterns": ["security_first_architecture", "microservices_platform"],
-        "prohibited_services": [],
-        "scoring_boost": {"Security": 5, "Networking": 3, "Monitoring": 3}
+        "compliance_frameworks": ["PCI DSS", "SOX", "GDPR", "Basel III"],
+        "required_services": ["Azure Key Vault", "Microsoft Defender for Cloud", "Azure Firewall", "Azure Monitor"],
+        "data_residency": "required",
+        "encryption": "end_to_end",
+        "audit_logging": "comprehensive",
+        "special_considerations": ["Payment data security", "Trading compliance", "Risk management"]
     },
     "government": {
-        "name": "Government",
-        "compliance_requirements": ["FedRAMP", "FISMA", "ITAR", "CJIS"],
-        "required_services": ["Azure Government", "Key Vault", "Azure Monitor", "Azure Policy"],
-        "recommended_services": ["Azure Firewall", "DDoS Protection", "Sentinel", "Azure Automation"],
-        "data_governance": "strict",
-        "encryption": "required",
-        "specific_patterns": ["security_first_architecture"],
-        "prohibited_services": [],
-        "scoring_boost": {"Security": 5, "Management": 4, "Monitoring": 3}
+        "name": "Government & Public Sector",
+        "compliance_frameworks": ["FedRAMP", "FISMA", "ITAR", "CJIS"],
+        "required_services": ["Azure Government", "Azure Key Vault", "Microsoft Defender for Cloud"],
+        "data_residency": "government_cloud",
+        "encryption": "fips_140_2",
+        "audit_logging": "comprehensive",
+        "special_considerations": ["Citizen data protection", "National security", "Regulatory oversight"]
     },
     "retail": {
         "name": "Retail & E-commerce",
-        "compliance_requirements": ["PCI DSS", "GDPR", "CCPA"],
-        "required_services": ["Azure CDN", "Application Gateway", "Key Vault"],
-        "recommended_services": ["Azure Cache for Redis", "Cosmos DB", "Cognitive Services", "Azure Monitor"],
-        "data_governance": "moderate",
-        "encryption": "recommended",
-        "specific_patterns": ["serverless_web_app", "analytics_platform"],
-        "prohibited_services": [],
-        "scoring_boost": {"Web": 4, "AI + ML": 3, "Analytics": 3}
+        "compliance_frameworks": ["PCI DSS", "GDPR", "CCPA"],
+        "required_services": ["Azure Key Vault", "Azure CDN", "Azure Application Gateway"],
+        "data_residency": "flexible",
+        "encryption": "standard",
+        "audit_logging": "standard",
+        "special_considerations": ["Customer data privacy", "Payment processing", "Global scaling"]
     },
     "manufacturing": {
-        "name": "Manufacturing",
-        "compliance_requirements": ["ISO 27001", "SOC 2", "IEC 62443"],
-        "required_services": ["Azure IoT Hub", "Azure Monitor", "Key Vault"],
-        "recommended_services": ["Digital Twins", "Stream Analytics", "Machine Learning", "Time Series Insights"],
-        "data_governance": "moderate",
-        "encryption": "recommended",
-        "specific_patterns": ["iot_platform", "ml_platform"],
-        "prohibited_services": [],
-        "scoring_boost": {"IoT": 5, "Analytics": 4, "AI + ML": 3}
+        "name": "Manufacturing & Industrial",
+        "compliance_frameworks": ["ISO 27001", "SOC 2", "NIST"],
+        "required_services": ["Azure IoT Hub", "Azure Monitor", "Azure Key Vault"],
+        "data_residency": "flexible",
+        "encryption": "standard",
+        "audit_logging": "operational",
+        "special_considerations": ["OT security", "Supply chain", "Predictive maintenance"]
     },
-    "media": {
-        "name": "Media & Entertainment",
-        "compliance_requirements": ["SOC 2", "ISO 27001"],
-        "required_services": ["Azure CDN", "Azure Media Services", "Blob Storage"],
-        "recommended_services": ["Cognitive Services", "Azure Functions", "Event Grid"],
-        "data_governance": "moderate",
-        "encryption": "recommended",
-        "specific_patterns": ["serverless_web_app"],
-        "prohibited_services": [],
-        "scoring_boost": {"Web": 4, "Storage": 4, "AI + ML": 3}
-    },
-    "education": {
-        "name": "Education",
-        "compliance_requirements": ["FERPA", "SOC 2", "GDPR"],
-        "required_services": ["Azure Active Directory", "Key Vault", "Azure Monitor"],
-        "recommended_services": ["App Service", "Cognitive Services", "Power BI"],
-        "data_governance": "moderate", 
-        "encryption": "recommended",
-        "specific_patterns": ["serverless_web_app", "analytics_platform"],
-        "prohibited_services": [],
-        "scoring_boost": {"Security": 3, "AI + ML": 3, "Analytics": 3}
+    "technology": {
+        "name": "Technology & Software",
+        "compliance_frameworks": ["SOC 2", "ISO 27001", "GDPR"],
+        "required_services": ["Azure DevOps", "Azure Key Vault", "Azure Monitor"],
+        "data_residency": "flexible",
+        "encryption": "standard",
+        "audit_logging": "development_focused",
+        "special_considerations": ["DevSecOps", "API security", "Multi-tenancy"]
     }
 }
 
-# Enhanced service relationships with detailed integration patterns
-ENHANCED_SERVICE_RELATIONSHIPS = {
-    "Azure Synapse Analytics": {
-        "works_well_with": ["Power BI", "Azure Data Lake Storage", "Azure Data Factory", "Azure Machine Learning", "Microsoft Purview"],
-        "data_sources": ["Azure SQL Database", "Cosmos DB", "Blob Storage", "Azure Data Lake Storage", "Event Hubs"],
-        "outputs_to": ["Power BI", "Azure Machine Learning", "Azure Databricks", "Azure Functions"],
-        "architectural_pattern": "modern_data_platform",
-        "dependency_score": 8,
-        "integration_complexity": "high"
-    },
-    "Power BI": {
-        "works_well_with": ["Azure Synapse Analytics", "Azure Data Factory", "Azure SQL Database", "Azure Analysis Services"],
-        "data_sources": ["Azure Synapse Analytics", "Azure SQL Database", "Cosmos DB", "Excel", "SharePoint"],
-        "outputs_to": ["SharePoint", "Teams", "Power Apps", "Office 365"],
-        "architectural_pattern": "analytics_platform",
-        "dependency_score": 6,
-        "integration_complexity": "medium"
-    },
-    "Azure Data Factory": {
-        "works_well_with": ["Azure Synapse Analytics", "Azure Data Lake Storage", "Power BI", "Azure Databricks"],
-        "data_sources": ["Multiple sources", "On-premises databases", "SaaS applications"],
-        "outputs_to": ["Azure Data Lake Storage", "Azure Synapse Analytics", "Azure SQL Database"],
-        "architectural_pattern": "modern_data_platform",
-        "dependency_score": 9,
-        "integration_complexity": "medium"
-    },
-    "Azure Kubernetes Service (AKS)": {
-        "works_well_with": ["Azure Container Registry", "Azure Monitor", "Application Gateway", "Key Vault", "Azure DevOps"],
-        "dependencies": ["Virtual Network", "Azure Active Directory", "Azure Container Registry"],
-        "outputs_to": ["Load Balancer", "Application Gateway", "Azure Monitor"],
-        "architectural_pattern": "microservices_platform",
-        "dependency_score": 7,
-        "integration_complexity": "high"
-    },
-    "Azure Machine Learning": {
-        "works_well_with": ["Azure Databricks", "Azure Synapse Analytics", "Azure Data Factory", "Azure Container Registry"],
-        "data_sources": ["Azure Data Lake Storage", "Blob Storage", "Azure SQL Database", "Cosmos DB"],
-        "outputs_to": ["Azure Container Instances", "AKS", "Azure Functions", "Power BI"],
-        "architectural_pattern": "ml_platform",
-        "dependency_score": 8,
-        "integration_complexity": "high"
-    },
-    "Azure IoT Hub": {
-        "works_well_with": ["Azure Stream Analytics", "Event Grid", "Azure Functions", "Power BI"],
-        "data_sources": ["IoT devices", "sensors", "gateways"],
-        "outputs_to": ["Azure Stream Analytics", "Event Hubs", "Azure Functions", "Storage"],
-        "architectural_pattern": "iot_platform",
-        "dependency_score": 8,
-        "integration_complexity": "medium"
-    },
-    "Azure Functions": {
-        "works_well_with": ["Logic Apps", "Event Grid", "Cosmos DB", "API Management", "Key Vault"],
-        "triggers": ["HTTP", "Event Grid", "Service Bus", "Timer", "Blob Storage"],
-        "outputs_to": ["Cosmos DB", "SQL Database", "Service Bus", "Event Grid"],
-        "architectural_pattern": "serverless_web_app",
-        "dependency_score": 5,
-        "integration_complexity": "low"
-    }
-}
-
-def extract_comprehensive_features(use_case: str, capabilities: Dict, industry: str = None, solution_type: str = None) -> set:
-    """Enhanced feature extraction with semantic analysis and domain knowledge"""
-    features = set()
-    
-    # Add selected capabilities
-    for cap, selected in capabilities.items():
-        if selected:
-            features.add(cap.lower().replace(" ", "_"))
-    
-    # Industry-specific features
-    if industry and industry in ENHANCED_INDUSTRY_TEMPLATES:
-        template = ENHANCED_INDUSTRY_TEMPLATES[industry]
-        features.update([svc.lower().replace(" ", "_") for svc in template["required_services"]])
-        features.add(f"compliance_{industry}")
-        
-        # Add industry-specific patterns
-        for pattern in template.get("specific_patterns", []):
-            features.add(f"pattern_{pattern}")
-    
-    # Solution type features
-    if solution_type:
-        features.add(f"solution_{solution_type.lower()}")
-    
-    # Advanced keyword extraction with semantic understanding
-    use_case_lower = use_case.lower()
-    
-    # Enhanced technical patterns with broader coverage
-    enhanced_patterns = {
-        # Data & Analytics
-        "data_warehouse": ["warehouse", "dwh", "dimensional", "olap", "analytics", "reporting", "etl"],
-        "data_lake": ["data lake", "big data", "hadoop", "parquet", "delta", "raw data"],
-        "real_time": ["real-time", "realtime", "streaming", "live", "instant", "event", "continuous"],
-        "batch_processing": ["batch", "scheduled", "overnight", "bulk", "etl", "data processing"],
-        
-        # AI & ML
-        "machine_learning": ["ml", "ai", "prediction", "model", "algorithm", "training", "inference"],
-        "nlp": ["natural language", "text processing", "sentiment", "chatbot", "language"],
-        "computer_vision": ["image", "vision", "ocr", "object detection", "facial recognition"],
-        "generative_ai": ["gpt", "openai", "generative", "content generation", "llm"],
-        
-        # Architecture Patterns
-        "microservices": ["microservice", "micro-service", "service-oriented", "distributed", "containers"],
-        "serverless": ["serverless", "event-driven", "lambda", "function", "faas"],
-        "monolithic": ["monolith", "single application", "traditional", "legacy"],
-        
-        # Technology Domains
-        "iot": ["iot", "sensor", "device", "telemetry", "industrial", "smart", "connected"],
-        "web_app": ["web", "website", "portal", "frontend", "ui", "spa", "progressive web"],
-        "mobile": ["mobile", "ios", "android", "app", "responsive", "xamarin"],
-        "api": ["api", "rest", "graphql", "endpoint", "integration", "service"],
-        
-        # Data Storage
-        "database": ["database", "db", "sql", "nosql", "data storage", "persistence"],
-        "relational": ["sql", "relational", "acid", "transactions", "normalized"],
-        "nosql": ["nosql", "document", "key-value", "graph", "mongodb", "cassandra"],
-        "caching": ["cache", "redis", "memory", "session", "performance"],
-        
-        # Integration & Communication
-        "messaging": ["queue", "message", "pub/sub", "event", "notification", "async"],
-        "workflow": ["workflow", "orchestration", "process", "automation", "business process"],
-        "api_management": ["api gateway", "rate limiting", "authentication", "developer portal"],
-        
-        # Security & Compliance
-        "security": ["security", "authentication", "authorization", "identity", "encryption"],
-        "compliance": ["compliance", "regulation", "audit", "governance", "policy"],
-        "identity": ["sso", "active directory", "oauth", "saml", "identity provider"],
-        
-        # Operations & Management
-        "monitoring": ["monitoring", "logging", "observability", "metrics", "alerting"],
-        "devops": ["ci/cd", "pipeline", "deployment", "automation", "git"],
-        "backup": ["backup", "disaster recovery", "dr", "resilience", "availability"],
-        
-        # Scale & Performance
-        "high_availability": ["ha", "availability", "uptime", "redundancy", "failover"],
-        "scalability": ["scale", "elastic", "auto-scale", "performance", "load"],
-        "global": ["global", "worldwide", "multi-region", "geo-distributed", "cdn"],
-        
-        # Industry Specific
-        "healthcare": ["medical", "patient", "fhir", "healthcare", "clinical"],
-        "financial": ["banking", "payment", "trading", "fintech", "financial"],
-        "retail": ["e-commerce", "shopping", "inventory", "pos", "customer"],
-        "manufacturing": ["production", "factory", "industrial", "supply chain"],
-        "education": ["learning", "student", "course", "academic", "educational"]
-    }
-    
-    # Apply pattern matching with scoring
-    pattern_scores = {}
-    for feature, keywords in enhanced_patterns.items():
-        score = sum(1 for keyword in keywords if keyword in use_case_lower)
-        if score > 0:
-            features.add(feature)
-            pattern_scores[feature] = score
-    
-    # Add contextual features based on strong patterns
-    if pattern_scores.get("data_warehouse", 0) > 0 or pattern_scores.get("analytics", 0) > 0:
-        features.update(["data_lake", "etl", "business_intelligence"])
-    
-    if pattern_scores.get("machine_learning", 0) > 0:
-        features.update(["data_science", "model_deployment", "analytics"])
-    
-    if pattern_scores.get("iot", 0) > 0:
-        features.update(["real_time", "telemetry", "analytics"])
-    
-    if pattern_scores.get("microservices", 0) > 0:
-        features.update(["containers", "api", "monitoring"])
-    
-    return features
-
-def calculate_solution_architecture_score(service: Dict, features: set, architecture_context: Dict, industry: str = None) -> Tuple[int, Dict]:
-    """Advanced scoring algorithm focusing on complete solution architecture"""
+def calculate_comprehensive_score(service: Dict, requirements: Dict, architecture_context: Dict) -> Tuple[int, Dict]:
+    """Enhanced scoring algorithm with detailed analysis"""
     score_breakdown = {
-        "functional_match": 0,
-        "pattern_completion": 0,
+        "functional_alignment": 0,
+        "architectural_fit": 0,
+        "compliance_match": 0,
         "integration_synergy": 0,
-        "architectural_tier": 0,
-        "industry_alignment": 0,
-        "compliance_bonus": 0,
-        "data_flow_bonus": 0,
-        "operational_completeness": 0
+        "cost_efficiency": 0,
+        "industry_relevance": 0,
+        "innovation_factor": 0
     }
     
-    service_name = service["name"].lower()
-    service_category = service.get("category", "").lower()
-    service_use_cases = service.get("use_cases", [])
-    service_tier = service.get("architectural_tier", "application")
+    use_case_text = requirements.get("use_case", "").lower()
+    selected_capabilities = requirements.get("capabilities", {})
+    industry = requirements.get("industry", "")
     
-    # 1. Functional matching (base score)
-    for feature in features:
-        if feature in service_name or feature in service_category:
-            score_breakdown["functional_match"] += 4
-        elif any(feature in use_case for use_case in service_use_cases):
-            score_breakdown["functional_match"] += 3
+    # 1. Functional Alignment (0-25 points)
+    service_use_cases = [uc.lower() for uc in service.get("use_cases", [])]
+    capability_matches = sum(1 for cap, selected in selected_capabilities.items() 
+                           if selected and cap.lower().replace(" ", "_") in " ".join(service_use_cases))
     
-    # 2. Architecture pattern completion bonus
+    text_matches = sum(3 for uc in service_use_cases if uc in use_case_text)
+    score_breakdown["functional_alignment"] = min(25, capability_matches * 4 + text_matches)
+    
+    # 2. Architectural Fit (0-20 points)
+    architectural_importance = service.get("architectural_importance", "medium")
+    importance_scores = {"critical": 20, "high": 15, "medium": 10, "low": 5}
+    score_breakdown["architectural_fit"] = importance_scores.get(architectural_importance, 10)
+    
+    # 3. Compliance Match (0-15 points)
+    if industry in INDUSTRY_COMPLIANCE:
+        industry_reqs = INDUSTRY_COMPLIANCE[industry]
+        service_compliance = service.get("compliance", [])
+        required_frameworks = industry_reqs["compliance_frameworks"]
+        
+        compliance_score = sum(3 for framework in required_frameworks if framework in service_compliance)
+        if service["name"] in industry_reqs["required_services"]:
+            compliance_score += 6
+        score_breakdown["compliance_match"] = min(15, compliance_score)
+    
+    # 4. Integration Synergy (0-15 points)
     selected_services = architecture_context.get("selected_services", [])
-    for pattern_name, pattern in ENHANCED_ARCHITECTURE_PATTERNS.items():
-        if any(f"pattern_{pattern_name}" in features for features in [features]):
-            if service["name"] in pattern["required"]:
-                score_breakdown["pattern_completion"] += 8
-            elif service["name"] in pattern["recommended"]:
-                score_breakdown["pattern_completion"] += 5
-            elif service["name"] in pattern["optional"]:
-                score_breakdown["pattern_completion"] += 2
+    integration_partners = service.get("integrates_with", [])
+    synergy_score = sum(2 for selected in selected_services 
+                       if any(partner in selected for partner in integration_partners))
+    score_breakdown["integration_synergy"] = min(15, synergy_score)
+    
+    # 5. Cost Efficiency (0-10 points)
+    cost_tier = service.get("cost_tier", "medium")
+    cost_scores = {"free": 10, "low": 8, "medium": 6, "high": 3, "variable": 5}
+    score_breakdown["cost_efficiency"] = cost_scores.get(cost_tier, 6)
+    
+    # 6. Industry Relevance (0-10 points)
+    if industry and industry in ["healthcare", "financial", "government"]:
+        # High-compliance industries
+        if service.get("category") in ["Security & Identity", "Monitoring & Management"]:
+            score_breakdown["industry_relevance"] = 8
+        elif "HIPAA" in service.get("compliance", []) or "FedRAMP" in service.get("compliance", []):
+            score_breakdown["industry_relevance"] = 10
+    elif industry in ["technology", "startup"]:
+        # Innovation-focused industries
+        if service.get("category") in ["AI & Machine Learning", "DevOps & Developer Tools"]:
+            score_breakdown["industry_relevance"] = 8
+    
+    # 7. Innovation Factor (0-5 points)
+    innovative_services = ["Azure OpenAI Service", "Microsoft Fabric", "Azure Digital Twins", 
+                          "Azure Container Apps", "Azure Machine Learning"]
+    if service["name"] in innovative_services:
+        score_breakdown["innovation_factor"] = 5
+    elif service.get("category") == "AI & Machine Learning":
+        score_breakdown["innovation_factor"] = 3
+    
+    total_score = sum(score_breakdown.values())
+    return total_score, score_breakdown
+
+def detect_architecture_patterns(selected_services: List[str], requirements: Dict) -> List[Dict]:
+    """Enhanced pattern detection with completeness analysis"""
+    detected_patterns = []
+    
+    for pattern_name, pattern in COMPREHENSIVE_PATTERNS.items():
+        required_services = pattern["required_services"]
+        recommended_services = pattern["recommended_services"]
+        optional_services = pattern["optional_services"]
+        
+        # Calculate coverage
+        required_coverage = sum(1 for svc in required_services if svc in selected_services)
+        recommended_coverage = sum(1 for svc in recommended_services if svc in selected_services)
+        optional_coverage = sum(1 for svc in optional_services if svc in selected_services)
+        
+        total_required = len(required_services)
+        total_recommended = len(recommended_services)
+        
+        # Determine completeness
+        if required_coverage == total_required:
+            if recommended_coverage >= total_recommended * 0.7:
+                completeness = "complete"
+            else:
+                completeness = "core_complete"
+        elif required_coverage >= total_required * 0.8:
+            completeness = "mostly_complete"
+        elif required_coverage >= total_required * 0.5:
+            completeness = "partially_complete"
+        else:
+            completeness = "minimal"
+        
+        # Check use case alignment
+        pattern_use_cases = pattern["use_cases"]
+        use_case_text = requirements.get("use_case", "").lower()
+        capabilities = requirements.get("capabilities", {})
+        
+        use_case_alignment = sum(1 for uc in pattern_use_cases 
+                               if uc in use_case_text or 
+                               any(uc in cap.lower() for cap, selected in capabilities.items() if selected))
+        
+        # Only include patterns with some relevance
+        if completeness != "minimal" or use_case_alignment > 0:
+            pattern_score = (required_coverage * 3 + recommended_coverage * 2 + 
+                           optional_coverage + use_case_alignment * 2)
             
-            # Bonus for completing patterns
-            required_in_selection = sum(1 for svc in pattern["required"] if svc in selected_services)
-            total_required = len(pattern["required"])
-            if required_in_selection >= total_required * 0.7:  # 70% completion
-                score_breakdown["pattern_completion"] += 3
+            detected_patterns.append({
+                "name": pattern["name"],
+                "description": pattern["description"],
+                "completeness": completeness,
+                "required_coverage": f"{required_coverage}/{total_required}",
+                "recommended_coverage": f"{recommended_coverage}/{total_recommended}",
+                "optional_coverage": optional_coverage,
+                "missing_required": [svc for svc in required_services if svc not in selected_services],
+                "missing_recommended": [svc for svc in recommended_services if svc not in selected_services],
+                "pattern_score": pattern_score,
+                "complexity": pattern["complexity"],
+                "timeline": pattern["estimated_timeline"],
+                "use_case_alignment": use_case_alignment
+            })
     
-    # 3. Integration synergy (enhanced)
-    if service["name"] in ENHANCED_SERVICE_RELATIONSHIPS:
-        relationships = ENHANCED_SERVICE_RELATIONSHIPS[service["name"]]
-        
-        for selected in selected_services:
-            if selected in relationships.get("works_well_with", []):
-                score_breakdown["integration_synergy"] += 4
-            elif selected in relationships.get("data_sources", []) or selected in relationships.get("outputs_to", []):
-                score_breakdown["integration_synergy"] += 3
-        
-        # Dependency bonus
-        dependency_score = relationships.get("dependency_score", 5)
-        score_breakdown["integration_synergy"] += min(dependency_score, 5)
+    # Sort by pattern score
+    detected_patterns.sort(key=lambda x: x["pattern_score"], reverse=True)
+    return detected_patterns
+
+def generate_cost_analysis(selected_services: List[Dict], requirements: Dict) -> Dict:
+    """Enhanced cost analysis with detailed breakdown and optimization suggestions"""
     
-    # 4. Architectural tier prioritization
-    tier_priorities = {
-        "security": 10,      # Always high priority
-        "management": 8,     # Monitoring, governance
-        "integration": 7,    # Data flow, events
-        "data": 6,          # Storage, databases
-        "analytics": 6,     # Processing, insights
-        "compute": 5,       # VMs, containers
-        "application": 5,   # App services
-        "network": 4,       # Infrastructure
-        "presentation": 3   # UI, dashboards
+    # Base cost estimates (monthly USD)
+    base_costs = {
+        "free": 0,
+        "low": 75,
+        "medium": 350,
+        "high": 1200,
+        "variable": 200
     }
     
-    base_tier_score = tier_priorities.get(service_tier, 3)
+    # Scaling factors based on requirements
+    team_size = requirements.get("team_size", 10)
+    data_volume = requirements.get("data_volume_gb", 500)
+    expected_users = requirements.get("expected_users", 1000)
     
-    # Adjust based on solution needs
-    if "analytics" in features or "business_intelligence" in features:
-        if service_tier in ["analytics", "data", "presentation"]:
-            base_tier_score += 3
+    cost_analysis = {
+        "services": {},
+        "category_totals": {},
+        "scaling_assumptions": {
+            "team_size": team_size,
+            "data_volume_gb": data_volume,
+            "expected_users": expected_users
+        }
+    }
     
-    if "security" in features or "compliance" in features:
-        if service_tier == "security":
-            base_tier_score += 5
+    total_monthly = 0
+    category_costs = {}
     
-    if "iot" in features:
-        if service_tier in ["application", "integration", "analytics"]:
-            base_tier_score += 3
-    
-    score_breakdown["architectural_tier"] = base_tier_score
-    
-    # 5. Industry alignment
-    if industry and industry in ENHANCED_INDUSTRY_TEMPLATES:
-        template = ENHANCED_INDUSTRY_TEMPLATES[industry]
+    for service in selected_services:
+        cost_tier = service.get("cost_tier", "medium")
+        category = service["category"]
+        base_cost = base_costs[cost_tier]
         
-        if service["name"] in template["required_services"]:
-            score_breakdown["industry_alignment"] += 6
-        elif service["name"] in template["recommended_services"]:
-            score_breakdown["industry_alignment"] += 4
+        # Apply scaling based on service type
+        if "Analytics" in category or "AI" in category:
+            scaling_factor = max(1, data_volume / 100)
+        elif "Compute" in category or "Container" in category:
+            scaling_factor = max(1, expected_users / 500)
+        elif "Database" in category:
+            scaling_factor = max(1, (data_volume / 200) * (expected_users / 1000))
+        elif "DevOps" in category:
+            scaling_factor = max(1, team_size / 5)
+        else:
+            scaling_factor = max(1, expected_users / 1000)
         
-        # Category boost
-        category_boost = template.get("scoring_boost", {}).get(service["category"], 0)
-        score_
+        monthly_cost = base_cost * scaling_factor
+        annual_cost = monthly_cost * 12 * 0.85  # Assume 15% annual discount
+        
+        cost_analysis["services"][service["name"]] = {
+            "monthly_estimate": round(monthly_cost, 2),
+            "annual_estimate": round(annual_cost, 2),
+            "cost_tier": cost_tier,
+            "scaling_factor": round(scaling_factor, 2),
+            "category": category
+        }
+        
+        total_monthly += monthly_cost
+        category_costs[category] = category_costs.get(category, 0) + monthly_cost
+    
+    cost_analysis["total_monthly"] = round(total_monthly, 2)
+    cost_analysis["total_annual"] = round(total_monthly * 12 * 0.85, 2)
+    cost_analysis["category_totals"] = {k: round(v, 2) for k, v in category_costs.items()}
+    
+    # Cost optimization suggestions
+    optimization_suggestions = []
+    
+    high_cost_services = [name for name, details in cost_analysis["services"].items() 
+                         if details["monthly_estimate"] > 500]
+    
+    if high_cost_services:
+        optimization_suggestions.append(
+            f"Consider reserved instances for high-cost services: {', '.join(high_cost_services[:3])}"
+        )
+    
+    if cost_analysis["total_monthly"] > 2000:
+        optimization_suggestions.append(
+            "Explore Azure Hybrid Benefit for Windows and SQL Server licensing savings"
+        )
+    
+    serverless_alternatives = ["Azure Functions", "Azure Container Apps", "Azure Logic Apps"]
+    compute_services = [name for name, details in cost_analysis["services"].items() 
+                       if "Compute" in details["category"]]
+    
+    if compute_services and not any(alt in cost_analysis["services"] for alt in serverless_alternatives):
+        optimization_suggestions.append(
+            "Consider serverless alternatives for variable workloads to optimize costs"
+        )
+    
+    cost_analysis["optimization_suggestions"] = optimization_suggestions
+    
+    return cost_analysis
+
+def generate_architecture_diagram(selected_services: List[Dict], patterns: List[Dict]) -> str:
+    """Generate comprehensive Mermaid architecture diagram"""
+    
+    # Group services by category
+    service_groups = {}
+    for service in selected_services:
+        category = service["category"]
+        if category not in service_groups:
+            service_groups[category] = []
+        service_groups[category].append(service["name"])
+    
+    # Define flow relationships
+    flow_relationships = {
+        "Integration & Messaging": ["Compute", "Analytics & BI", "AI & Machine Learning"],
+        "IoT & Edge": ["Analytics & BI", "Storage", "AI & Machine Learning"],
+        "Compute": ["Databases", "Storage", "AI & Machine Learning"],
+        "Containers": ["Databases", "Storage", "Networking"],
+        "Analytics & BI": ["Storage", "Databases"],
+        "AI & Machine Learning": ["Storage", "Analytics & BI"],
+        "DevOps & Developer Tools": ["Compute", "Containers"],
+        "Networking": ["Security & Identity"],
+        "Security & Identity": ["Monitoring & Management"]
+    }
+    
+    # Build Mermaid diagram
+    diagram = ["flowchart TB"]
+    
+    # Create subgraphs for each category
+    node_counter = 0
+    category_nodes = {}
+    
+    for category, services in service_groups.items():
+        safe_category = category.replace(" ", "_").replace("&", "and")
+        diagram.append(f"    subgraph {safe_category} [\"{category}\"]")
+        category_nodes[category] = []
+        
+        for service in services:
+            node_id = f"node{node_counter}"
+            # Shorten service names for better display
+            display_name = service.replace("Azure ", "").replace("Microsoft ", "")
+            if len(display_name) > 25:
+                display_name = display_name[:22] + "..."
+            
+            diagram.append(f"        {node_id}[\"{display_name}\"]")
+            category_nodes[category].append(node_id)
+            node_counter += 1
+        
+        diagram.append("    end")
+    
+    # Add relationships between categories
+    for source_category, target_categories in flow_relationships.items():
+        if source_category in service_groups:
+            for target_category in target_categories:
+                if target_category in service_groups:
+                    # Connect first node of source to first node of target
+                    if (category_nodes.get(source_category) and 
+                        category_nodes.get(target_category)):
+                        source_node = category_nodes[source_category][0]
+                        target_node = category_nodes[target_category][0]
+                        diagram.append(f"    {source_node} --> {target_node}")
+    
+    # Add styling
+    diagram.extend([
+        "    classDef compute fill:#e1f5fe",
+        "    classDef storage fill:#f3e5f5",
+        "    classDef analytics fill:#e8f5e8",
+        "    classDef security fill:#ffebee",
+        "    classDef ai fill:#fff3e0"
+    ])
+    
+    return "\n".join(diagram)
+
+def validate_architecture_completeness(selected_services: List[Dict], requirements: Dict) -> Tuple[List[str], List[str], List[str]]:
+    """Comprehensive architecture validation"""
+    
+    service_names = [svc["name"] for svc in selected_services]
+    categories = [svc["category"] for svc in selected_services]
+    industry = requirements.get("industry", "")
+    
+    critical_gaps = []
+    warnings = []
+    recommendations = []
+    
+    # Essential architecture components
+    if "Security & Identity" not in categories:
+        critical_gaps.append("❌ No identity and security services - Critical security risk")
+        recommendations.append("Add Azure Active Directory and Azure Key Vault for basic security")
+    
+    if "Monitoring & Management" not in categories:
+        critical_gaps.append("❌ No monitoring solution - Cannot observe system health")
+        recommendations.append("Add Azure Monitor and Application Insights for observability")
+    
+    # Data architecture validation
+    has_storage = any("Storage" in cat or "Database" in cat for cat in categories)
+    has_analytics = "Analytics & BI" in categories
+    
+    if has_analytics and not has_storage:
+        warnings.append("⚠️ Analytics services without adequate storage layer")
+        recommendations.append("Consider Azure Data Lake Storage for analytics workloads")
+    
+    # Networking validation
+    has_compute = any(cat in ["Compute", "Containers"] for cat in categories)
+    has_networking = "Networking" in categories
+    
+    if has_compute and not has_networking:
+        warnings.append("⚠️ Compute services without network isolation")
+        recommendations.append("Add Azure Virtual Network for security isolation")
+    
+    # High availability validation
+    critical_services = [svc for svc in selected_services 
+                        if svc.get("architectural_importance") == "critical"]
+    
+    if len(critical_services) > 2 and not any("load_balancer" in svc.get("use_cases", []) 
+                                              for svc in selected_services):
+        warnings.append("⚠️ No load balancing for high availability")
+        recommendations.append("Consider Azure Load Balancer or Application Gateway")
+    
+    # Industry-specific validation
+    if industry in INDUSTRY_COMPLIANCE:
+        industry_reqs = INDUSTRY_COMPLIANCE[industry]
+        missing_required = [svc for svc in industry_reqs["required_services"] 
+                           if svc not in service_names]
+        
+        if missing_required:
+            critical_gaps.append(f"❌ Missing required {industry} services: {', '.join(missing_required)}")
+    
+    # DevOps validation
+    has_devops = "DevOps & Developer Tools" in categories
+    if has_compute and not has_devops:
+        recommendations.append("Consider adding CI/CD tools like Azure DevOps or GitHub Actions")
+    
+    # Cost optimization suggestions
+    high_cost_services = [svc for svc in selected_services if svc.get("cost_tier") == "high"]
+    if len(high_cost_services) > 3:
+        warnings.append("⚠️ High number of expensive services - Review cost optimization")
+        recommendations.append("Consider serverless alternatives for variable workloads")
+    
+    return critical_gaps, warnings, recommendations
+
+# Streamlit UI Implementation
+def main():
+    st.title("🏗️ Azure Solution Architect Pro")
+    st.markdown("*Comprehensive Azure architecture recommendations for enterprise solutions*")
+    
+    # Sidebar for inputs
+    with st.sidebar:
+        st.header("📋 Requirements Gathering")
+        
+        # Use case description
+        use_case = st.text_area(
+            "Describe your use case and goals:",
+            placeholder="e.g., Build a modern data platform for real-time analytics with AI capabilities...",
+            height=100
+        )
+        
+        # Industry selection
+        industry = st.selectbox(
+            "Industry:",
+            [""] + list(INDUSTRY_COMPLIANCE.keys()),
+            format_func=lambda x: INDUSTRY_COMPLIANCE[x]["name"] if x else "Select industry..."
+        )
+        
+        # Team and scale information
+        st.subheader("📊 Scale & Requirements")
+        team_size = st.slider("Team size:", 1, 100, 10)
+        expected_users = st.slider("Expected users:", 100, 100000, 1000, step=100)
+        data_volume = st.slider("Data volume (GB):", 10, 10000, 500, step=50)
+        
+        # Capabilities selection
+        st.subheader("🎯 Capabilities Needed")
+        capabilities = {}
+        
+        capability_categories = {
+            "Data & Analytics": [
+                "Data Warehousing", "Real-time Analytics", "Business Intelligence", 
+                "ETL/Data Integration", "Big Data Processing"
+            ],
+            "AI & Machine Learning": [
+                "Machine Learning", "Generative AI", "Computer Vision", 
+                "Natural Language Processing", "Predictive Analytics"
+            ],
+            "Application Platform": [
+                "Web Applications", "APIs", "Microservices", "Serverless", 
+                "Mobile Backend", "Integration"
+            ],
+            "Infrastructure": [
+                "Containers", "Virtual Machines", "DevOps/CI-CD", 
+                "Monitoring", "Security", "Networking"
+            ],
+            "Specialized": [
+                "IoT", "Edge Computing", "Blockchain", "Gaming", 
+                "Content Delivery", "Backup & DR"
+            ]
+        }
+        
+        for category, caps in capability_categories.items():
+            with st.expander(f"{category}"):
+                for cap in caps:
+                    capabilities[cap] = st.checkbox(cap, key=f"cap_{cap}")
+        
+        # Compliance requirements
+        if industry:
+            st.subheader("🔒 Compliance")
+            industry_info = INDUSTRY_COMPLIANCE[industry]
+            st.info(f"**{industry_info['name']}** requires: {', '.join(industry_info['compliance_frameworks'])}")
+        
+        # Generate recommendations button
+        generate_recommendations = st.button("🚀 Generate Architecture", type="primary", use_container_width=True)
+    
+    # Main content area
+    if generate_recommendations and use_case:
+        requirements = {
+            "use_case": use_case,
+            "industry": industry,
+            "capabilities": capabilities,
+            "team_size": team_size,
+            "expected_users": expected_users,
+            "data_volume_gb": data_volume
+        }
+        
+        # Get Azure services and calculate scores
+        all_services = get_comprehensive_azure_services()
+        
+        with st.spinner("🔍 Analyzing requirements and generating recommendations..."):
+            scored_services = []
+            architecture_context = {"selected_services": []}
+            
+            for service in all_services:
+                score, score_breakdown = calculate_comprehensive_score(service, requirements, architecture_context)
+                if score > 10:  # Minimum threshold
+                    service_copy = service.copy()
+                    service_copy["total_score"] = score
+                    service_copy["score_breakdown"] = score_breakdown
+                    scored_services.append(service_copy)
+            
+            # Sort and select top services
+            scored_services.sort(key=lambda x: (-x["total_score"], x["name"]))
+            top_services = scored_services[:15]  # Top 15 services
+            
+            # Update context with selected services
+            architecture_context["selected_services"] = [svc["name"] for svc in top_services]
+            
+            # Detect architecture patterns
+            detected_patterns = detect_architecture_patterns(
+                architecture_context["selected_services"], 
+                requirements
+            )
+            
+            # Generate cost analysis
+            cost_analysis = generate_cost_analysis(top_services, requirements)
+            
+            # Validate architecture
+            critical_gaps, warnings, recommendations_list = validate_architecture_completeness(
+                top_services, requirements
