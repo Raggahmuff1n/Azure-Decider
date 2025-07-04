@@ -1701,18 +1701,14 @@ def main():
                     for suggestion in cost_analysis['optimization_suggestions']:
                         st.info(suggestion)
             
-            with tab4:
-    st.header("🏗️ Architecture Diagram")
-    
-    # Generate and display architecture diagram
-    diagram_code = generate_architecture_diagram(top_services, detected_patterns)
-    st_mermaid(diagram_code)
-
-    # Dropdown (expander) for the Mermaid code
-    with st.expander(f"{ICON} Show/Copy Mermaid Diagram Code"):
-        st.code(diagram_code, language="mermaid")
-        st.info("💡 Copy the diagram code above and paste it into a Mermaid editor like [mermaid.live](https://mermaid.live) for visualization")
-            
+           with tab4:
+            st.header("🏗️ Architecture Diagram")
+            # ...all other lines for this tab, indented...
+            diagram_code = generate_architecture_diagram(top_services, detected_patterns)
+            st_mermaid(diagram_code)
+            with st.expander(f"{ICON} Show/Copy Mermaid Diagram Code"):
+            st.code(diagram_code, language="mermaid")
+            st.info("💡 Copy the diagram code above and paste it into a Mermaid editor like [mermaid.live](https://mermaid.live) for visualization")
             with tab5:
                 st.header("✅ Architecture Validation & Next Steps")
                 
