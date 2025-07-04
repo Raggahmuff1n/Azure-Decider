@@ -3,44 +3,53 @@ import pandas as pd
 import json
 from typing import Dict, List, Any, Tuple
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import math
-from streamlit_extras.mermaid import st_mermaid  # <<< Mermaid diagrams for pretty
 
-ACCENT = "#2563eb"
-ICON = "🟦"
-
-def accent_header(text):
-    st.markdown(
-        f"""
-        <div style="display:flex;align-items:center;">
-            <span style="font-size:1.5em;color:{ACCENT};margin-right:8px;">{ICON}</span>
-            <span style="font-size:1.3em;font-weight:bold;color:{ACCENT};">{text}</span>
-        </div>
-        """, unsafe_allow_html=True
-    )
-
-def accent_container(content):
-    st.markdown(
-        f"""
-        <div style="background-color:#e0ecff;padding:18px 18px 8px 18px;border-radius:10px;border-left:6px solid {ACCENT};margin-bottom:10px;">
-        {content}
-        </div>
-        """, unsafe_allow_html=True
-    )
-
-def accent_line():
-    st.markdown(f'<hr style="border:1px solid {ACCENT};margin:18px 0;">', unsafe_allow_html=True)
-
+# --- CUSTOM CSS FOR PROFESSIONAL LOOK ---
+st.markdown("""
+<style>
+/* Azure blue icon class */
+.azure-icon {
+    color: #0078d4 !important;
+    font-size: 1.4em;
+    vertical-align: middle;
+    margin-right: 0.3em;
+}
+/* Section container */
+.section-container {
+    background: #f6fafd;
+    border: 1px solid #e3e8ee;
+    border-radius: 12px;
+    padding: 1.3em 1em 1em 1em;
+    margin-bottom: 1.5em;
+    box-shadow: 0 1px 8px 0 #e5eefd7a;
+}
+/* Metric titles and headings */
+.metric-title {
+    font-size: 1.07em;
+    color: #0078d4;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.section-heading {
+    font-size: 1.4em;
+    color: #0078d4;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+}
+.expander-header {
+    color: #0078d4;
+    font-weight: 600;
+    font-size: 1.11em;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.set_page_config(
-    page_title="Azure Solution Architect Pro", 
-    layout="wide", 
+    page_title="Azure Solution Architect Pro",
+    layout="wide",
     page_icon="☁️",
     initial_sidebar_state="expanded"
 )
-
 # Enhanced Azure Service Catalog with Full Coverage
 @st.cache_data(ttl=3600)
 def get_comprehensive_azure_services():
@@ -1480,75 +1489,84 @@ def calculate_business_value(selected_services: List[Dict], requirements: Dict) 
 
 # Streamlit UI Implementation
 def main():
-    st.title("🏗️ Azure Solution Architect Pro")
-    st.markdown("*Comprehensive Azure architecture recommendations for enterprise solutions*")
-    
-    # Sidebar for inputs
+    st.markdown(
+        '<div class="section-container">'
+        '<span class="azure-icon">☁️</span>'
+        '<span class="section-heading">Azure Solution Architect Pro</span>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<div class="section-container" style="margin-top:-1.2em;">'
+        '<span class="metric-title">Comprehensive Azure architecture recommendations for enterprise solutions</span>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    # --- Sidebar for requirements ---
     with st.sidebar:
-        st.header("📋 Requirements Gathering")
-        
-        # Use case description
+        st.markdown(
+            '<span class="azure-icon">📝</span> <span class="metric-title">Requirements Gathering</span>',
+            unsafe_allow_html=True
+        )
         use_case = st.text_area(
             "Describe your use case and goals:",
             placeholder="e.g., Build a modern data platform for real-time analytics with AI capabilities...",
             height=100
         )
-        
-        # Industry selection
+
         industry = st.selectbox(
             "Industry:",
             [""] + list(INDUSTRY_COMPLIANCE.keys()),
             format_func=lambda x: INDUSTRY_COMPLIANCE[x]["name"] if x else "Select industry..."
         )
-        
-        # Team and scale information
-        st.subheader("📊 Scale & Requirements")
+
+        st.markdown('<span class="azure-icon">📊</span> <span class="metric-title">Scale & Requirements</span>', unsafe_allow_html=True)
         team_size = st.slider("Team size:", 1, 100, 10)
         expected_users = st.slider("Expected users:", 100, 100000, 1000, step=100)
         data_volume = st.slider("Data volume (GB):", 10, 10000, 500, step=50)
-        
-        # Capabilities selection
-        st.subheader("🎯 Capabilities Needed")
+
+        st.markdown('<span class="azure-icon">🎯</span> <span class="metric-title">Capabilities Needed</span>', unsafe_allow_html=True)
         capabilities = {}
-        
+
         capability_categories = {
             "Data & Analytics": [
-                "Data Warehousing", "Real-time Analytics", "Business Intelligence", 
+                "Data Warehousing", "Real-time Analytics", "Business Intelligence",
                 "ETL/Data Integration", "Big Data Processing"
             ],
             "AI & Machine Learning": [
-                "Machine Learning", "Generative AI", "Computer Vision", 
+                "Machine Learning", "Generative AI", "Computer Vision",
                 "Natural Language Processing", "Predictive Analytics"
             ],
             "Application Platform": [
-                "Web Applications", "APIs", "Microservices", "Serverless", 
+                "Web Applications", "APIs", "Microservices", "Serverless",
                 "Mobile Backend", "Integration"
             ],
             "Infrastructure": [
-                "Containers", "Virtual Machines", "DevOps/CI-CD", 
+                "Containers", "Virtual Machines", "DevOps/CI-CD",
                 "Monitoring", "Security", "Networking"
             ],
             "Specialized": [
-                "IoT", "Edge Computing", "Blockchain", "Gaming", 
+                "IoT", "Edge Computing", "Blockchain", "Gaming",
                 "Content Delivery", "Backup & DR"
             ]
         }
-        
         for category, caps in capability_categories.items():
             with st.expander(f"{category}"):
                 for cap in caps:
                     capabilities[cap] = st.checkbox(cap, key=f"cap_{cap}")
-        
-        # Compliance requirements
+
         if industry:
-            st.subheader("🔒 Compliance")
+            st.markdown(
+                '<span class="azure-icon">🔒</span> <span class="metric-title">Compliance</span>',
+                unsafe_allow_html=True
+            )
             industry_info = INDUSTRY_COMPLIANCE[industry]
             st.info(f"**{industry_info['name']}** requires: {', '.join(industry_info['compliance_frameworks'])}")
-        
-        # Generate recommendations button
-        generate_recommendations = st.button("🚀 Generate Architecture", type="primary", use_container_width=True)
-    
-    # Main content area
+
+        generate_recommendations = st.button("Generate Architecture", type="primary", use_container_width=True)
+
+    # --- Main content area ---
     if generate_recommendations and use_case:
         requirements = {
             "use_case": use_case,
@@ -1558,287 +1576,232 @@ def main():
             "expected_users": expected_users,
             "data_volume_gb": data_volume
         }
-        
-        # Get Azure services and calculate scores
         all_services = get_comprehensive_azure_services()
-        
-        with st.spinner("🔍 Analyzing requirements and generating recommendations..."):
+
+        with st.spinner("Analyzing requirements and generating recommendations..."):
             scored_services = []
             architecture_context = {"selected_services": []}
-            
             for service in all_services:
                 score, score_breakdown = calculate_comprehensive_score(service, requirements, architecture_context)
-                if score > 10:  # Minimum threshold
+                if score > 10:
                     service_copy = service.copy()
                     service_copy["total_score"] = score
                     service_copy["score_breakdown"] = score_breakdown
                     scored_services.append(service_copy)
-            
-            # Sort and select top services
             scored_services.sort(key=lambda x: (-x["total_score"], x["name"]))
-            top_services = scored_services[:20]  # Top 20 services
-            
-            # Update context with selected services
+            top_services = scored_services[:20]
             architecture_context["selected_services"] = [svc["name"] for svc in top_services]
-            
-            # Detect architecture patterns
+
             detected_patterns = detect_architecture_patterns(
-                architecture_context["selected_services"], 
+                architecture_context["selected_services"],
                 requirements
             )
-            
-            # Generate cost analysis
             cost_analysis = generate_cost_analysis(top_services, requirements)
-            
-            # Validate architecture
             critical_gaps, warnings, recommendations_list = validate_architecture_completeness(
                 top_services, requirements
             )
-            
-            # Calculate business value
             business_value = calculate_business_value(top_services, requirements)
-            
-            # Display results in tabs
-            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-                "📋 Recommended Services", 
-                "🏗️ Architecture Patterns", 
-                "💰 Cost Analysis", 
-                "📊 Architecture Diagram", 
-                "✅ Validation & Next Steps",
-                "📈 Business Value"
+
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "Recommended Services",
+            "Architecture Patterns",
+            "Cost Analysis",
+            "Architecture Diagram",
+            "Validation & Next Steps",
+            "Business Value"
+        ])
+
+        with tab1:
+            st.markdown('<div class="section-heading"><span class="azure-icon">🎯</span> Recommended Azure Services</div>', unsafe_allow_html=True)
+            for i, service in enumerate(top_services, 1):
+                st.markdown('<div class="section-container">', unsafe_allow_html=True)
+                st.markdown(
+                    f'<span class="azure-icon">🔷</span> <span class="metric-title">{i}. {service["name"]}</span> '
+                    f'(Score: <span style="color:#0078d4;">{service["total_score"]}/100</span>)',
+                    unsafe_allow_html=True
+                )
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.write(f"**Category:** {service['category']}")
+                    st.write(f"**Description:** {service['description']}")
+                    st.write(f"**Role in Architecture:** {service['data_role']}")
+                    st.write("**Score Breakdown:**")
+                    for criterion, score in service['score_breakdown'].items():
+                        st.write(f"- {criterion.replace('_', ' ').title()}: {score}")
+                with col2:
+                    st.metric("Total Score", f"{service['total_score']}/100")
+                    st.write(f"**Cost Tier:** {service['cost_tier'].title()}")
+                    st.write(f"**Pricing:** [Details]({service['pricing']})")
+                    st.write(f"**Documentation:** [Learn More]({service['docs']})")
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.divider()
+
+        with tab2:
+            st.markdown('<div class="section-heading"><span class="azure-icon">🏗️</span> Architecture Patterns</div>', unsafe_allow_html=True)
+            if detected_patterns:
+                for pattern in detected_patterns[:3]:
+                    st.markdown('<div class="section-container">', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<span class="azure-icon">🟦</span> <span class="metric-title">{pattern["name"]}</span>',
+                        unsafe_allow_html=True
+                    )
+                    st.write(pattern['description'])
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Completeness", pattern['completeness'].replace('_', ' ').title())
+                    with col2:
+                        st.metric("Complexity", pattern['complexity'].title())
+                    with col3:
+                        st.metric("Timeline", pattern['timeline'])
+                    if pattern['missing_required']:
+                        st.warning(f"**Missing Required Services:** {', '.join(pattern['missing_required'])}")
+                    if pattern['missing_recommended']:
+                        st.info(f"**Consider Adding:** {', '.join(pattern['missing_recommended'])}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.divider()
+
+        with tab3:
+            st.markdown('<div class="section-heading"><span class="azure-icon">💰</span> Cost Analysis</div>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Monthly Estimate", f"${cost_analysis['total_monthly']:,.2f}")
+            with col2:
+                st.metric("Annual Estimate", f"${cost_analysis['total_annual']:,.2f}")
+            with col3:
+                annual_savings = cost_analysis['total_monthly'] * 12 - cost_analysis['total_annual']
+                st.metric("Annual Savings", f"${annual_savings:,.2f}")
+            st.divider()
+            st.markdown('<span class="metric-title">Cost Breakdown by Category</span>', unsafe_allow_html=True)
+            cost_df = pd.DataFrame([
+                {"Category": cat, "Monthly Cost": cost}
+                for cat, cost in cost_analysis['category_totals'].items()
             ])
-            
-            with tab1:
-                st.header("🎯 Recommended Azure Services")
-                
-                # Service recommendations with scoring
-                for i, service in enumerate(top_services, 1):
-                    with st.expander(f"{i}. {service['name']} (Score: {service['total_score']}/100)", expanded=(i <= 5)):
-                        col1, col2 = st.columns([2, 1])
-                        
-                        with col1:
-                            st.write(f"**Category:** {service['category']}")
-                            st.write(f"**Description:** {service['description']}")
-                            st.write(f"**Role in Architecture:** {service['data_role']}")
-                            
-                            # Score breakdown
-                            st.write("**Score Breakdown:**")
-                            for criterion, score in service['score_breakdown'].items():
-                                st.write(f"- {criterion.replace('_', ' ').title()}: {score}")
-                        
-                        with col2:
-                            st.metric("Total Score", f"{service['total_score']}/100")
-                            st.write(f"**Cost Tier:** {service['cost_tier'].title()}")
-                            st.write(f"**Pricing:** [Details]({service['pricing']})")
-                            st.write(f"**Documentation:** [Learn More]({service['docs']})")
-            
-            with tab2:
-                st.header("🏗️ Architecture Patterns")
-                
-                if detected_patterns:
-                    for pattern in detected_patterns[:3]:  # Show top 3 patterns
-                        with st.container():
-                            st.subheader(f"🎯 {pattern['name']}")
-                            st.write(pattern['description'])
-                            
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Completeness", pattern['completeness'].replace('_', ' ').title())
-                            with col2:
-                                st.metric("Complexity", pattern['complexity'].title())
-                            with col3:
-                                st.metric("Timeline", pattern['timeline'])
-                            
-                            if pattern['missing_required']:
-                                st.warning(f"**Missing Required Services:** {', '.join(pattern['missing_required'])}")
-                            
-                            if pattern['missing_recommended']:
-                                st.info(f"**Consider Adding:** {', '.join(pattern['missing_recommended'])}")
-                            
-                            st.divider()
-            
-            with tab3:
-                st.header("💰 Cost Analysis")
-                
-                # Cost overview
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Monthly Estimate", f"${cost_analysis['total_monthly']:,.2f}")
-                with col2:
-                    st.metric("Annual Estimate", f"${cost_analysis['total_annual']:,.2f}")
-                with col3:
-                    annual_savings = cost_analysis['total_monthly'] * 12 - cost_analysis['total_annual']
-                    st.metric("Annual Savings", f"${annual_savings:,.2f}")
-                
-                # Cost breakdown by category
-                st.subheader("📊 Cost Breakdown by Category")
-                cost_df = pd.DataFrame([
-                    {"Category": cat, "Monthly Cost": cost} 
-                    for cat, cost in cost_analysis['category_totals'].items()
-                ])
-                
-                fig = px.pie(cost_df, values='Monthly Cost', names='Category', 
-                             title="Monthly Cost Distribution")
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Detailed service costs
-                st.subheader("🏷️ Service Cost Breakdown")
-                services_df = pd.DataFrame([
-                    {
-                        "Service": name,
-                        "Category": details['category'],
-                        "Monthly Cost": f"${details['monthly_estimate']:,.2f}",
-                        "Annual Cost": f"${details['annual_estimate']:,.2f}",
-                        "Cost Tier": details['cost_tier'].title()
-                    }
-                    for name, details in cost_analysis['services'].items()
-                ])
-                st.dataframe(services_df, use_container_width=True)
-                
-                # Optimization suggestions
-                if cost_analysis['optimization_suggestions']:
-                    st.subheader("💡 Cost Optimization Suggestions")
-                    for suggestion in cost_analysis['optimization_suggestions']:
-                        st.info(suggestion)
-            
-           with tab4:
-            st.header("🏗️ Architecture Diagram")
-            # ...all other lines for this tab, indented...
+            fig = px.pie(cost_df, values='Monthly Cost', names='Category', title="Monthly Cost Distribution")
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown('<span class="metric-title">Service Cost Breakdown</span>', unsafe_allow_html=True)
+            services_df = pd.DataFrame([
+                {
+                    "Service": name,
+                    "Category": details['category'],
+                    "Monthly Cost": f"${details['monthly_estimate']:,.2f}",
+                    "Annual Cost": f"${details['annual_estimate']:,.2f}",
+                    "Cost Tier": details['cost_tier'].title()
+                }
+                for name, details in cost_analysis['services'].items()
+            ])
+            st.dataframe(services_df, use_container_width=True)
+            if cost_analysis['optimization_suggestions']:
+                st.markdown('<span class="metric-title">Cost Optimization Suggestions</span>', unsafe_allow_html=True)
+                for suggestion in cost_analysis['optimization_suggestions']:
+                    st.info(suggestion)
+
+        with tab4:
+            st.markdown('<div class="section-heading"><span class="azure-icon">🏗️</span> Architecture Diagram</div>', unsafe_allow_html=True)
             diagram_code = generate_architecture_diagram(top_services, detected_patterns)
-            st_mermaid(diagram_code)
-            with st.expander(f"{ICON} Show/Copy Mermaid Diagram Code"):
             st.code(diagram_code, language="mermaid")
-            st.info("💡 Copy the diagram code above and paste it into a Mermaid editor like [mermaid.live](https://mermaid.live) for visualization")
-            with tab5:
-                st.header("✅ Architecture Validation & Next Steps")
-                
-                # Critical gaps
-                if critical_gaps:
-                    st.error("🚨 Critical Issues Found")
-                    for gap in critical_gaps:
-                        st.error(gap)
-                
-                # Warnings
-                if warnings:
-                    st.warning("⚠️ Recommendations")
-                    for warning in warnings:
-                        st.warning(warning)
-                
-                # Recommendations
-                if recommendations_list:
-                    st.success("💡 Architecture Improvements")
-                    for rec in recommendations_list:
-                        st.success(rec)
-                
-                # Next steps
-                st.subheader("🚀 Recommended Next Steps")
-                
-                next_steps = [
-                    "1. **Review and validate** the recommended services against your specific requirements",
-                    "2. **Start with core services** (highest scored) and build incrementally",
-                    "3. **Set up proof of concept** with 2-3 key services",
-                    "4. **Engage Azure specialists** for detailed architecture review",
-                    "5. **Plan migration strategy** if moving from existing infrastructure",
-                    "6. **Establish governance** and security policies early",
-                    "7. **Set up monitoring and alerting** from day one"
-                ]
-                
-                for step in next_steps:
-                    st.write(step)
-                
-                # Contact information
-                st.info("📞 **Need Help?** Contact your Microsoft partner or Azure specialist for detailed implementation guidance.")
-            
-            with tab6:
-                st.header("📈 Business Value & ROI")
-                
-                # Cost savings potential
-                st.subheader("💰 Cost Savings Potential")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    infra_savings = business_value["cost_savings"]["infrastructure_reduction"]
-                    st.metric("Infrastructure Cost Reduction", f"{infra_savings:.1%}")
-                
-                with col2:
-                    ops_efficiency = business_value["cost_savings"]["operational_efficiency"]
-                    st.metric("Operational Efficiency Gain", f"{ops_efficiency:.1%}")
-                
-                with col3:
-                    license_savings = business_value["cost_savings"]["license_optimization"]
-                    st.metric("License Optimization", f"{license_savings:.1%}")
-                
-                # Productivity gains
-                st.subheader("⚡ Productivity Gains")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    dev_productivity = business_value["productivity_gains"]["developer_productivity"]
-                    st.metric("Developer Productivity", f"{dev_productivity:.1%}")
-                
-                with col2:
-                    deployment_speed = business_value["productivity_gains"]["deployment_speed"]
-                    st.metric("Faster Deployments", f"{deployment_speed:.1%}")
-                
-                with col3:
-                    time_to_market = business_value["productivity_gains"]["time_to_market"]
-                    st.metric("Faster Time to Market", f"{time_to_market:.1%}")
-                
-                # Innovation capabilities
-                st.subheader("🚀 Innovation Capabilities")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    ai_capabilities = business_value["innovation_enablers"]["ai_ml_capabilities"]
-                    st.metric("AI/ML Services", ai_capabilities)
-                
-                with col2:
-                    analytics_maturity = business_value["innovation_enablers"]["analytics_maturity"]
-                    st.metric("Analytics Services", analytics_maturity)
-                
-                with col3:
-                    security_posture = business_value["innovation_enablers"]["security_posture"]
-                    st.metric("Security Services", security_posture)
-    
+            st.info("💡 Copy the diagram code above and paste it into a Mermaid editor like [mermaid.live](https://mermaid.live) for visualization.")
+
+        with tab5:
+            st.markdown('<div class="section-heading"><span class="azure-icon">✅</span> Architecture Validation & Next Steps</div>', unsafe_allow_html=True)
+            if critical_gaps:
+                st.markdown('<span class="metric-title">Critical Issues Found</span>', unsafe_allow_html=True)
+                for gap in critical_gaps:
+                    st.error(gap)
+            if warnings:
+                st.markdown('<span class="metric-title">Warnings & Recommendations</span>', unsafe_allow_html=True)
+                for warning in warnings:
+                    st.warning(warning)
+            if recommendations_list:
+                st.markdown('<span class="metric-title">Architecture Improvements</span>', unsafe_allow_html=True)
+                for rec in recommendations_list:
+                    st.success(rec)
+            st.divider()
+            st.markdown('<span class="metric-title">Recommended Next Steps</span>', unsafe_allow_html=True)
+            next_steps = [
+                "1. **Review and validate** the recommended services against your specific requirements",
+                "2. **Start with core services** (highest scored) and build incrementally",
+                "3. **Set up proof of concept** with 2-3 key services",
+                "4. **Engage Azure specialists** for detailed architecture review",
+                "5. **Plan migration strategy** if moving from existing infrastructure",
+                "6. **Establish governance** and security policies early",
+                "7. **Set up monitoring and alerting** from day one"
+            ]
+            for step in next_steps:
+                st.write(step)
+            st.info("📞 **Need Help?** Contact your Microsoft partner or Azure specialist for detailed implementation guidance.")
+
+        with tab6:
+            st.markdown('<div class="section-heading"><span class="azure-icon">📈</span> Business Value & ROI</div>', unsafe_allow_html=True)
+            st.markdown('<span class="metric-title">Cost Savings Potential</span>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                infra_savings = business_value["cost_savings"]["infrastructure_reduction"]
+                st.metric("Infrastructure Cost Reduction", f"{infra_savings:.1%}")
+            with col2:
+                ops_efficiency = business_value["cost_savings"]["operational_efficiency"]
+                st.metric("Operational Efficiency Gain", f"{ops_efficiency:.1%}")
+            with col3:
+                license_savings = business_value["cost_savings"]["license_optimization"]
+                st.metric("License Optimization", f"{license_savings:.1%}")
+            st.divider()
+            st.markdown('<span class="metric-title">Productivity Gains</span>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                dev_productivity = business_value["productivity_gains"]["developer_productivity"]
+                st.metric("Developer Productivity", f"{dev_productivity:.1%}")
+            with col2:
+                deployment_speed = business_value["productivity_gains"]["deployment_speed"]
+                st.metric("Faster Deployments", f"{deployment_speed:.1%}")
+            with col3:
+                time_to_market = business_value["productivity_gains"]["time_to_market"]
+                st.metric("Faster Time to Market", f"{time_to_market:.1%}")
+            st.divider()
+            st.markdown('<span class="metric-title">Innovation Capabilities</span>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                ai_capabilities = business_value["innovation_enablers"]["ai_ml_capabilities"]
+                st.metric("AI/ML Services", ai_capabilities)
+            with col2:
+                analytics_maturity = business_value["innovation_enablers"]["analytics_maturity"]
+                st.metric("Analytics Services", analytics_maturity)
+            with col3:
+                security_posture = business_value["innovation_enablers"]["security_posture"]
+                st.metric("Security Services", security_posture)
     else:
-        # Welcome screen
-        st.header("🏗️ Welcome to Azure Solution Architect Pro")
-        
+        # --- Welcome screen, styled ---
+        st.markdown('<div class="section-container">', unsafe_allow_html=True)
+        st.header("Welcome to Azure Solution Architect Pro")
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("""
-            ### 🎯 What This Tool Does:
-            - **Comprehensive Service Recommendations** across all Azure categories
-            - **Architecture Pattern Detection** with completeness analysis
-            - **Detailed Cost Analysis** with optimization suggestions
-            - **Architecture Validation** with security and compliance checks
-            - **Visual Architecture Diagrams** for stakeholder communication
-            - **Business Value Assessment** with ROI calculations
+            ### What This Tool Does:
+            - **Comprehensive Service Recommendations**
+            - **Architecture Pattern Detection**
+            - **Detailed Cost Analysis**
+            - **Architecture Validation**
+            - **Visual Architecture Diagrams**
+            - **Business Value Assessment**
             """)
-        
         with col2:
             st.markdown("""
-            ### 🚀 Perfect For:
-            - **Solution Architects** designing Azure solutions
-            - **Technical Consultants** advising clients
-            - **Development Teams** planning cloud migrations
-            - **Business Stakeholders** understanding Azure capabilities
-            - **Partners** creating customer proposals
+            ### Perfect For:
+            - **Solution Architects**
+            - **Technical Consultants**
+            - **Development Teams**
+            - **Business Stakeholders**
+            - **Partners**
             """)
-        
         st.markdown("""
-        ### 📋 Get Started:
-        1. **Describe your use case** in detail in the sidebar
-        2. **Select your industry** for compliance requirements
-        3. **Choose capabilities** you need
-        4. **Set scale parameters** (team size, users, data)
-        5. **Generate recommendations** and explore the results
+        ### Get Started:
+        1. **Describe your use case** in detail in the sidebar  
+        2. **Select your industry** for compliance requirements  
+        3. **Choose capabilities** you need  
+        4. **Set scale parameters** (team size, users, data)  
+        5. **Generate recommendations** and explore the results  
         """)
-        
-        # Sample use cases
-        st.subheader("💡 Sample Use Cases")
-        
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-container">', unsafe_allow_html=True)
+        st.subheader("Sample Use Cases")
         sample_cases = {
             "Modern Data Platform": "Build a comprehensive data platform for real-time analytics, machine learning, and business intelligence with unified governance and security.",
             "AI-Powered Application": "Create intelligent applications with generative AI capabilities, automated workflows, and seamless user experiences.",
@@ -1847,10 +1810,10 @@ def main():
             "Secure Enterprise Platform": "Build a comprehensive enterprise platform with zero-trust security, compliance, and governance.",
             "Hybrid Cloud Strategy": "Create a unified hybrid cloud platform connecting on-premises and Azure with centralized management."
         }
-        
         for title, description in sample_cases.items():
             with st.expander(title):
-                st.write(description)
+                st.markdown(f'<span class="azure-icon">💡</span> {description}', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
