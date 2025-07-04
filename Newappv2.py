@@ -6,6 +6,33 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
+from streamlit_extras.mermaid import st_mermaid  # <<< Mermaid diagrams for pretty
+
+ACCENT = "#2563eb"
+ICON = "🟦"
+
+def accent_header(text):
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;">
+            <span style="font-size:1.5em;color:{ACCENT};margin-right:8px;">{ICON}</span>
+            <span style="font-size:1.3em;font-weight:bold;color:{ACCENT};">{text}</span>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+def accent_container(content):
+    st.markdown(
+        f"""
+        <div style="background-color:#e0ecff;padding:18px 18px 8px 18px;border-radius:10px;border-left:6px solid {ACCENT};margin-bottom:10px;">
+        {content}
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+def accent_line():
+    st.markdown(f'<hr style="border:1px solid {ACCENT};margin:18px 0;">', unsafe_allow_html=True)
+
 
 st.set_page_config(
     page_title="Azure Solution Architect Pro", 
@@ -1679,7 +1706,9 @@ def main():
                 
                 # Generate and display architecture diagram
                 diagram_code = generate_architecture_diagram(top_services, detected_patterns)
-                st.code(diagram_code, language="mermaid")
+                st_mermaid(diagram_code)
+with st.expander(f"{ICON} Show/Copy Mermaid Diagram Code"):
+    st.code(diagram_code, language="mermaid")
                 
                 st.info("💡 Copy the diagram code above and paste it into a Mermaid editor like [mermaid.live](https://mermaid.live) for visualization")
             
